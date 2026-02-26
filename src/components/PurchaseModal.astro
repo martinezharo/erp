@@ -1,0 +1,551 @@
+<dialog
+    id="modal-compra"
+    class="bg-transparent m-auto backdrop:bg-black/80 backdrop:backdrop-blur-sm w-full max-w-4xl p-0 open:animate-fade-in relative z-50"
+>
+    <!-- Wrapper to center/style -->
+    <div
+        class="bg-[#14151a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl m-4"
+    >
+        <div
+            class="p-6 border-b border-white/5 flex items-center justify-between bg-white/5"
+        >
+            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-6 h-6 text-emerald-400"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <path d="m21 16-4 4-4-4" />
+                    <path d="M17 20V4" />
+                    <path d="m3 8 4-4 4 4" />
+                    <path d="M7 4v16" />
+                </svg>
+                Nueva Compra
+            </h3>
+            <button
+                onclick="document.getElementById('modal-compra').close()"
+                class="text-slate-400 hover:text-white transition-colors"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <form id="form-compra" class="p-6 space-y-6">
+            <!-- Cabecera Compra -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label
+                        class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
+                        >Fecha</label
+                    >
+                    <input
+                        type="date"
+                        name="fecha"
+                        required
+                        class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-all"
+                    />
+                </div>
+                <div>
+                    <label
+                        class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
+                        >Estado</label
+                    >
+                    <select
+                        name="estado"
+                        required
+                        class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-all"
+                    >
+                        <option value="pendiente">Pendiente</option>
+                        <option value="recibida">Recibida</option>
+                        <option value="cancelada">Cancelada</option>
+                    </select>
+                </div>
+                <div>
+                    <label
+                        class="block text-xs font-medium text-emerald-300 uppercase tracking-wider mb-2"
+                        >Importe Total (Opcional)</label
+                    >
+                    <div class="relative">
+                        <input
+                            type="number"
+                            name="transaction_total"
+                            id="purchase-transaction-total"
+                            step="0.01"
+                            class="w-full bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 text-emerald-100 placeholder-emerald-300/30 focus:outline-none focus:border-emerald-500 transition-all font-mono font-bold"
+                            placeholder="0.00"
+                        />
+                        <div
+                            class="absolute right-3 top-3 text-emerald-400 text-sm"
+                        >
+                            €
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1">
+                        Reparte según coste unitario
+                    </p>
+                </div>
+            </div>
+
+            <!-- Lista de Productos -->
+            <div class="border-t border-white/5 pt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4
+                        class="text-sm font-bold text-white uppercase tracking-wider"
+                    >
+                        Productos
+                    </h4>
+                    <button
+                        type="button"
+                        id="add-purchase-item-btn"
+                        class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-white transition-colors flex items-center gap-1"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Añadir Producto
+                    </button>
+                </div>
+
+                <div
+                    id="purchase-items-container"
+                    class="space-y-4 max-h-[40vh] overflow-y-auto pr-2"
+                >
+                    <!-- Items dynamicos se añaden aquí -->
+                </div>
+            </div>
+
+            <!-- Total General Display (Optional but good UX) -->
+            <div
+                class="flex justify-between items-center pt-4 border-t border-white/5"
+            >
+                <div class="text-sm text-slate-400">Total Estimado</div>
+                <div
+                    class="text-xl font-bold text-emerald-400"
+                    id="purchase-total-display"
+                >
+                    0.00 €
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-6 border-t border-white/5">
+                <button
+                    type="button"
+                    onclick="document.getElementById('modal-compra').close()"
+                    class="px-6 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="submit"
+                    class="px-6 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/20 transition-all"
+                >
+                    Guardar Compra
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<style>
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(4px);
+        animation: fade-in 0.2s ease-out;
+    }
+    dialog {
+        margin: auto;
+    }
+    select option {
+        background-color: #1a1b23;
+        color: white;
+    }
+    dialog[open] {
+        animation: zoom-in 0.3s ease-out;
+    }
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    @keyframes zoom-in {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+</style>
+
+<script>
+    import { currentProject } from "../stores/projectStore";
+
+    interface Product {
+        id: number;
+        name: string;
+        price: number; // Selling price, might irrelevant for purchase but good for ref
+    }
+
+    interface PurchaseItem {
+        productId: number;
+        units: number;
+        unitPrice: number;
+        tax: number;
+    }
+
+    let products: Product[] = [];
+    let activeProjectId: number | null = null;
+
+    // Subscribe to Store
+    currentProject.subscribe((project) => {
+        if (project) {
+            activeProjectId = project.id;
+            loadProducts();
+        }
+    });
+
+    async function loadProducts() {
+        try {
+            // Reusing sales init data as it returns products.
+            // If we need strict supplier products later, we'd make a dedicated endpoint.
+            const response = await fetch("/api/sales/init-data");
+            const data = await response.json();
+            products = data.products || [];
+        } catch (error) {
+            console.error("Error loading products:", error);
+        }
+    }
+
+    // Add Item Logic
+    function addPurchaseItemRow(data: any = null) {
+        const itemsContainer = document.getElementById("purchase-items-container");
+        if (!itemsContainer) return;
+
+        const row = document.createElement("div");
+        row.className =
+            "grid grid-cols-12 gap-2 items-end mb-2 purchase-item-row";
+
+        // Data for pre-filling (Edit Mode - Future proofing)
+        const units = data ? data.unidades : 1;
+        const unitPrice = data ? data.precio_unitario_compra : 0;
+        const total = (units * unitPrice).toFixed(2);
+        const tax = data ? data.porcentaje_iva : 21;
+
+        row.innerHTML = `
+            <div class="col-span-5">
+                <label class="block text-xs text-slate-500 mb-1">Producto</label>
+                <select name="product[]" class="product-select w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                    <option value="">Seleccionar</option>
+                </select>
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs text-slate-500 mb-1">Uds</label>
+                <input type="number" name="units[]" class="units-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" placeholder="1" min="0.01" step="0.01" value="${units}">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs text-slate-500 mb-1">Total (€)</label>
+                <input type="number" name="total[]" step="0.01" class="total-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" placeholder="0.00" value="${data ? total : ""}">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs text-slate-500 mb-1">IVA %</label>
+                <input type="number" name="tax[]" class="tax-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" value="${tax}">
+            </div>
+            <div class="col-span-1 flex justify-end pb-2">
+                <button type="button" class="remove-item text-red-400 hover:text-red-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        `;
+
+        itemsContainer.appendChild(row);
+
+        // Populate Select
+        const select = row.querySelector(
+            ".product-select",
+        ) as HTMLSelectElement;
+        products.forEach((product: Product) => {
+            const option = document.createElement("option");
+            option.value = product.id.toString();
+            option.textContent = product.name;
+            if (data && data.producto_id === product.id) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+
+        // Event Listeners
+        row.querySelector(".remove-item")?.addEventListener("click", () => {
+            row.remove();
+            calculateGrandTotal();
+        });
+
+        row.querySelectorAll("input").forEach((input) => {
+            input.addEventListener("input", calculateGrandTotal);
+        });
+    }
+
+    function calculateGrandTotal() {
+        const transactionTotalInput = document.getElementById("purchase-transaction-total") as HTMLInputElement;
+        const totalDisplay = document.getElementById("purchase-total-display");
+        
+        let total = 0;
+        
+        if (transactionTotalInput && transactionTotalInput.value) {
+             total = parseFloat(transactionTotalInput.value);
+        } else {
+            document.querySelectorAll(".total-input").forEach((input: any) => {
+                const val = parseFloat(input.value || "0");
+                if (!isNaN(val)) total += val;
+            });
+        }
+        
+        if (totalDisplay) {
+            totalDisplay.textContent = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(total);
+        }
+    }
+
+    document.addEventListener("astro:page-load", () => {
+        const modal = document.getElementById("modal-compra") as HTMLDialogElement;
+        const form = document.getElementById("form-compra") as HTMLFormElement;
+        const itemsContainer = document.getElementById("purchase-items-container");
+        const addItemBtn = document.getElementById("add-purchase-item-btn");
+        const transactionTotalInput = document.getElementById("purchase-transaction-total");
+
+        if (!modal || !form) return;
+
+        // Load products
+        loadProducts();
+
+        // Initialize Date to Today
+        const dateInput = form.querySelector(
+            'input[name="fecha"]',
+        ) as HTMLInputElement;
+        if (dateInput && !dateInput.value) {
+            dateInput.value = new Date().toISOString().split("T")[0];
+        }
+
+        if (transactionTotalInput) {
+            transactionTotalInput.addEventListener("input", calculateGrandTotal);
+        }
+
+        addItemBtn?.addEventListener("click", () => addPurchaseItemRow());
+
+        // Submit Handler
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            if (!activeProjectId) {
+                alert("Selecciona un proyecto primero");
+                return;
+            }
+
+            const formData = new FormData(form);
+            const rows = document.querySelectorAll(".purchase-item-row");
+            const items: PurchaseItem[] = [];
+            
+            const transactionTotalInput = document.getElementById("purchase-transaction-total") as HTMLInputElement;
+            const transactionTotal = transactionTotalInput && transactionTotalInput.value ? parseFloat(transactionTotalInput.value) : 0;
+            
+            let totalWeight = 0;
+            
+            // First pass: Calculate total weight if transactionTotal is active
+            if (transactionTotal > 0) {
+                 rows.forEach((row) => {
+                    const select = row.querySelector(".product-select") as HTMLSelectElement;
+                    const unitsInput = row.querySelector(".units-input") as HTMLInputElement;
+                    const totalInput = row.querySelector(".total-input") as HTMLInputElement;
+                    
+                    if (select && select.value) {
+                         const inputValue = parseFloat(totalInput.value || "0"); // Unit Cost (Weight)
+                         const units = parseFloat(unitsInput.value || "0");
+                         if (units > 0) {
+                            totalWeight += inputValue * units; 
+                         }
+                    }
+                 });
+            }
+
+            rows.forEach((row) => {
+                const select = row.querySelector(
+                    ".product-select",
+                ) as HTMLSelectElement;
+                const unitsInput = row.querySelector(
+                    ".units-input",
+                ) as HTMLInputElement;
+                const totalInput = row.querySelector(
+                    ".total-input",
+                ) as HTMLInputElement;
+                const taxInput = row.querySelector(
+                    ".tax-input",
+                ) as HTMLInputElement;
+
+                if (select && select.value) {
+                    const units = parseFloat(unitsInput.value || "0");
+                    const inputValue = parseFloat(totalInput.value || "0");
+                    const tax = parseFloat(taxInput.value || "0");
+
+                    // Calculate Unit Price
+                    let unitPrice = 0;
+                    
+                    if (transactionTotal > 0 && totalWeight > 0) {
+                        // Distribution Logic
+                        // Weight for this line = inputValue * units (since inputValue is Unit Cost)
+                        const lineWeight = inputValue * units;
+                        const ratio = transactionTotal / totalWeight;
+                        const lineTotal = lineWeight * ratio;
+                        
+                        if (units > 0) {
+                            unitPrice = lineTotal / units;
+                        }
+                    } else {
+                        // Standard Logic
+                        if (units > 0) {
+                            unitPrice = inputValue / units;
+                        }
+                    }
+
+                    if (units > 0) {
+                        items.push({
+                            productId: parseInt(select.value),
+                            units: units,
+                            unitPrice: unitPrice,
+                            tax: tax,
+                        });
+                    }
+                }
+            });
+
+            if (items.length === 0) {
+                alert("Añade al menos un producto");
+                return;
+            }
+
+            const isEdit = !!form.dataset.editingId;
+            const payload = {
+                id: isEdit ? form.dataset.editingId : undefined,
+                projectId: activeProjectId,
+                date: formData.get("fecha"),
+                estado: formData.get("estado"),
+                items: items,
+            };
+
+            const endpoint = isEdit
+                ? "/api/purchases/update"
+                : "/api/purchases/create";
+            const method = isEdit ? "PUT" : "POST";
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                if (res.ok) {
+                    alert(
+                        isEdit
+                            ? "Compra actualizada correctamente"
+                            : "Compra guardada correctamente",
+                    );
+                    form.reset();
+                    delete form.dataset.editingId;
+                    const title = modal.querySelector("h3");
+                    if (title)
+                        title.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Nueva Compra`;
+
+                    if (itemsContainer) itemsContainer.innerHTML = "";
+                    modal.close();
+                    window.location.reload();
+                } else {
+                    const err = await res.json();
+                    alert("Error al guardar: " + (err.error || "Desconocido"));
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión");
+            }
+        });
+
+        // Expose for external calls
+        (window as any).loadPurchaseForEdit = async (id: number) => {
+            try {
+                const res = await fetch(`/api/purchases/get?id=${id}`);
+                if (!res.ok) throw new Error("Error loading purchase");
+                const purchase = await res.json();
+
+                if (modal && form) {
+                    // Set editing state
+                    form.dataset.editingId = purchase.id.toString();
+                    const title = modal.querySelector("h3");
+                    if (title) title.textContent = `Editar Compra #${purchase.id}`;
+
+                    // Fill fields
+                    const dateInput = form.querySelector(
+                        'input[name="fecha"]',
+                    ) as HTMLInputElement;
+                    if (dateInput) {
+                        dateInput.value = purchase.fecha
+                            ? purchase.fecha.split("T")[0]
+                            : "";
+                    }
+
+                    const statusSelect = form.querySelector(
+                        'select[name="estado"]',
+                    ) as HTMLSelectElement;
+                    if (statusSelect) statusSelect.value = purchase.estado;
+
+                    // Fill Items
+                    if (itemsContainer) itemsContainer.innerHTML = "";
+                    purchase.compra_detalle.forEach((d: any) => {
+                        addPurchaseItemRow(d);
+                    });
+
+                    calculateGrandTotal();
+
+                    modal.showModal();
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error al cargar la compra");
+            }
+        };
+    });
+</script>

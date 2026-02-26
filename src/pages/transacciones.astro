@@ -1,0 +1,101 @@
+---
+import Layout from "../layouts/Layout.astro";
+import TransactionsList from "../components/TransactionsList.astro";
+import SalesModal from "../components/SalesModal.astro";
+import PurchaseModal from "../components/PurchaseModal.astro";
+import OtherTransactionModal from "../components/OtherTransactionModal.astro";
+import Pagination from "../components/Pagination.astro";
+import { getAuthenticatedSupabase } from "../lib/supabase";
+import type { VistaFinanzasDiarias } from "../types/database";
+
+const supabase = getAuthenticatedSupabase(Astro.cookies);
+
+let data: VistaFinanzasDiarias[] = [];
+let errorMsg = "";
+
+// Get Project ID
+const projectIdParam = Astro.url.searchParams.get("projectId");
+let projectId = projectIdParam ? parseInt(projectIdParam) : null;
+
+// If no project ID in URL, fetch the first available project to default to
+if (!projectId) {
+    const { data: projects } = await supabase
+        .from("proyectos")
+        .select("id")
+        .order("id", { ascending: true })
+        .limit(1);
+
+    if (projects && projects.length > 0) {
+        projectId = projects[0].id;
+    }
+}
+
+// Pagination
+const pageParam = Astro.url.searchParams.get("page");
+const page = pageParam ? parseInt(pageParam) : 1;
+const pageSize = 15;
+const from = (page - 1) * pageSize;
+const to = from + pageSize - 1;
+
+let totalCount = 0;
+let totalPages = 0;
+
+// Fetch data if we have a project ID
+if (projectId) {
+    const {
+        data: transactionsData,
+        error,
+        count,
+    } = await supabase
+        .from("vista_finanzas_diarias")
+        .select("*", { count: "exact" })
+        .eq("proyecto_id", projectId)
+        .order("dia", { ascending: false })
+        .range(from, to);
+
+    if (error) {
+        errorMsg = error.message;
+    } else {
+        data = transactionsData || [];
+        totalCount = count || 0;
+        totalPages = Math.ceil(totalCount / pageSize);
+    }
+}
+---
+
+<Layout title="OlivERP | Transacciones">
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1
+                class="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-white to-slate-400"
+            >
+                Transacciones
+            </h1>
+            <p class="text-slate-400 mt-2">
+                Finanzas diarias, ingresos y gastos
+            </p>
+        </div>
+    </div>
+
+    {
+        errorMsg && (
+            <div class="p-4 mb-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+                Error cargando datos: {errorMsg}
+            </div>
+        )
+    }
+
+    <TransactionsList transactions={data} />
+
+    <div class="mt-8">
+        <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            baseUrl={`/transacciones?projectId=${projectId || ""}`}
+        />
+    </div>
+
+    <SalesModal />
+    <PurchaseModal />
+    <OtherTransactionModal />
+</Layout>

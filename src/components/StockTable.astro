@@ -1,0 +1,340 @@
+---
+import type { VistaStockFinal } from "../types/database";
+
+interface Props {
+    data: VistaStockFinal[];
+}
+
+const { data: rawData } = Astro.props;
+
+// 1. Sort alphabetically by default
+const data = [...rawData].sort((a, b) => 
+    a.nombre_producto.localeCompare(b.nombre_producto)
+);
+
+// 2. Calculate totals for summary
+const totalProducts = data.length;
+const totalUnits = data.reduce((acc, item) => acc + item.stock_actual, 0);
+const totalValue = data.reduce((acc, item) => acc + item.valor_stock, 0);
+
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("es-ES", {
+        style: "currency",
+        currency: "EUR",
+    }).format(value);
+};
+
+const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("es-ES").format(value);
+};
+---
+
+<!-- Summary Section (Bento Grid Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="p-6 rounded-2xl border border-white/5 bg-[#14151a]/50 backdrop-blur-xl shadow-lg relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div class="relative z-10">
+            <p class="text-sm font-medium text-slate-400 mb-1">Total Productos</p>
+            <p class="text-3xl font-bold text-white tracking-tight">{formatNumber(totalProducts)}</p>
+        </div>
+    </div>
+    
+    <div class="p-6 rounded-2xl border border-white/5 bg-[#14151a]/50 backdrop-blur-xl shadow-lg relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div class="relative z-10">
+            <p class="text-sm font-medium text-slate-400 mb-1">Unidades en Stock</p>
+            <p class="text-3xl font-bold text-white tracking-tight">{formatNumber(totalUnits)}</p>
+        </div>
+    </div>
+
+    <div class="p-6 rounded-2xl border border-white/5 bg-[#14151a]/50 backdrop-blur-xl shadow-lg relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div class="relative z-10">
+            <p class="text-sm font-medium text-slate-400 mb-1">Valor Total Stock</p>
+            <p class="text-3xl font-bold text-emerald-400 tracking-tight">{formatCurrency(totalValue)}</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('astro:page-load', () => {
+        const tableBody = document.getElementById('stock-table-body');
+        const headers = document.querySelectorAll('th[data-sort]');
+        
+        if (!tableBody || !headers.length) return;
+
+        let currentSort = {
+            column: 'name',
+            direction: 'asc'
+        };
+
+        // Initialize UI state
+        updateHeaderStyles();
+
+        headers.forEach(header => {
+            header.addEventListener('click', () => {
+                const column = header.getAttribute('data-sort');
+                if (!column) return;
+                
+                if (currentSort.column === column) {
+                    // Toggle direction
+                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    // New column, default to asc for name, desc for numbers
+                    currentSort.column = column;
+                    currentSort.direction = column === 'name' ? 'asc' : 'desc';
+                }
+
+                sortTable(column, currentSort.direction);
+                updateHeaderStyles();
+            });
+        });
+
+        function sortTable(column: string, direction: string) {
+            if (!tableBody) return;
+            const rows = Array.from(tableBody.querySelectorAll('tr'));
+            
+            // If no data rows (empty state), don't sort
+            if (rows.length === 1 && rows[0].innerText.includes('No hay datos')) return;
+
+            const sortedRows = rows.sort((a, b) => {
+                // Find the cell corresponding to the column
+                // Column mapping: name -> index 0, stock -> index 1, value -> index 2, profit_u -> 4, profit_30d -> 5, status -> 6
+                let cellIndex = 0;
+                if (column === 'stock') cellIndex = 1;
+                if (column === 'value') cellIndex = 2;
+                if (column === 'profit_u') cellIndex = 4;
+                if (column === 'profit_30d') cellIndex = 5;
+                if (column === 'status') cellIndex = 6;
+
+                const cellA = a.children[cellIndex];
+                const cellB = b.children[cellIndex];
+
+                const valA = cellA.getAttribute('data-val');
+                const valB = cellB.getAttribute('data-val');
+
+                // Parse values based on column type
+                let comparison = 0;
+                if (column === 'name') {
+                    comparison = (valA || '').localeCompare(valB || '');
+                } else {
+                    const numA = parseFloat(valA || '0');
+                    const numB = parseFloat(valB || '0');
+                    comparison = numA - numB;
+                }
+
+                return direction === 'asc' ? comparison : -comparison;
+            });
+
+            // Re-append sorted rows
+            sortedRows.forEach(row => tableBody.appendChild(row));
+        }
+
+        function updateHeaderStyles() {
+            headers.forEach(header => {
+                const column = header.getAttribute('data-sort');
+                const icon = header.querySelector('svg');
+                
+                // Reset styles
+                header.removeAttribute('data-active');
+                if (icon) {
+                    icon.classList.remove('text-primary-400', 'opacity-100');
+                    icon.classList.add('opacity-0');
+                    // Reset rotation if we add it later
+                }
+
+                // Apply active styles
+                if (column === currentSort.column) {
+                    header.setAttribute('data-active', 'true');
+                    if (icon) {
+                        icon.classList.remove('opacity-0');
+                        icon.classList.add('text-primary-400', 'opacity-100');
+                    }
+                }
+            });
+        }
+    });
+</script>
+<div
+    class="overflow-hidden rounded-2xl border border-white/5 bg-[#14151a]/50 backdrop-blur-xl shadow-2xl"
+>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-400" id="stock-table">
+            <thead
+                class="bg-white/5 text-xs uppercase font-semibold text-slate-200"
+            >
+                <tr>
+                    <th 
+                        scope="col" 
+                        class="px-6 py-4 cursor-pointer hover:text-white transition-colors select-none group/th"
+                        data-sort="name"
+                    >
+                        <div class="flex items-center gap-2">
+                            Producto
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100 data-[active=true]:opacity-100 data-[active=true]:text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                        </div>
+                    </th>
+                    <th 
+                        scope="col" 
+                        class="px-6 py-4 text-right cursor-pointer hover:text-white transition-colors select-none group/th"
+                        data-sort="stock"
+                    >
+                        <div class="flex items-center justify-end gap-2">
+                            Stock
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                        </div>
+                    </th>
+                    <th 
+                        scope="col" 
+                        class="px-6 py-4 text-right cursor-pointer hover:text-white transition-colors select-none group/th"
+                        data-sort="value"
+                    >
+                        <div class="flex items-center justify-end gap-2">
+                            Valor Stock
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                        </div>
+                    </th>
+                    <th scope="col" class="px-6 py-4 text-right"
+                        >Unitario (C/V)</th
+                    >
+                    <th
+                        scope="col"
+                        class="px-6 py-4 text-right text-primary-400 cursor-pointer hover:text-white transition-colors select-none group/th"
+                        data-sort="profit_u"
+                    >
+                        <div class="flex items-center justify-end gap-2">
+                            Beneficio U.
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                        </div>
+                    </th>
+                    <th 
+                        scope="col" 
+                        class="px-6 py-4 text-right cursor-pointer hover:text-white transition-colors select-none group/th"
+                        data-sort="profit_30d"
+                    >
+                        <div class="flex items-center justify-end gap-2">
+                            Beneficio 30d
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                        </div>
+                    </th>
+                    <th 
+                        scope="col" 
+                        class="px-6 py-4 text-center cursor-pointer hover:text-white transition-colors select-none group/th"
+                        data-sort="status"
+                    >
+                        <div class="flex items-center justify-center gap-2">
+                            Estado
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="stock-table-body" class="divide-y divide-white/5">
+                {
+                    data.length === 0 ? (
+                        <tr>
+                            <td
+                                colspan="7"
+                                class="px-6 py-12 text-center text-slate-500 italic"
+                            >
+                                No hay datos de stock para este proyecto.
+                            </td>
+                        </tr>
+                    ) : (
+                        data.map((item) => {
+                            const noStock = !(item.stock_actual > 0);
+                            const daysRemaining = item.dias_stock_restante;
+
+                            let statusBadge;
+                            let sortValueState = 999999;
+
+                            if (noStock) {
+                                sortValueState = -1; // Agotado first (or last depending on sort)
+                                statusBadge = (
+                                    <span class="inline-flex items-center rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-500 ring-1 ring-inset ring-red-500/20">
+                                        Agotado
+                                    </span>
+                                );
+                            } else if (
+                                daysRemaining === null ||
+                                daysRemaining === undefined
+                            ) {
+                                sortValueState = 999999; // Unknown at the end
+                                statusBadge = (
+                                    <span class="inline-flex items-center rounded-full bg-slate-500/10 px-2.5 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-500/20">
+                                        Sin datos
+                                    </span>
+                                );
+                            } else if (daysRemaining < 7) {
+                                sortValueState = daysRemaining;
+                                statusBadge = (
+                                    <span class="inline-flex items-center rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-500 ring-1 ring-inset ring-red-500/20">
+                                        {Math.round(daysRemaining)} días
+                                    </span>
+                                );
+                            } else if (daysRemaining < 30) {
+                                sortValueState = daysRemaining;
+                                statusBadge = (
+                                    <span class="inline-flex items-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-500 ring-1 ring-inset ring-yellow-500/20">
+                                        {Math.round(daysRemaining)} días
+                                    </span>
+                                );
+                            } else {
+                                sortValueState = daysRemaining;
+                                statusBadge = (
+                                    <span class="inline-flex items-center rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-500 ring-1 ring-inset ring-green-500/20">
+                                        {daysRemaining > 365
+                                            ? "+1 año"
+                                            : `${Math.round(daysRemaining)} días`}
+                                    </span>
+                                );
+                            }
+
+                            return (
+                                <tr class="hover:bg-white/5 transition-colors group">
+                                    <td class="px-6 py-4 font-medium text-white" data-val={item.nombre_producto}>
+                                        <button 
+                                            onclick={`openProductHistory(${item.producto_id}, '${item.nombre_producto.replace(/'/g, "\\'")}')`}
+                                            class="hover:text-primary-400 hover:underline transition-colors text-left"
+                                        >
+                                            {item.nombre_producto}
+                                        </button>
+                                    </td>
+                                    <td class="px-6 py-4 text-right font-mono text-slate-200" data-val={item.stock_actual}>
+                                        {formatNumber(item.stock_actual)}
+                                    </td>
+                                    <td class="px-6 py-4 text-right font-mono text-white" data-val={item.valor_stock}>
+                                        {formatCurrency(item.valor_stock)}
+                                    </td>
+                                    <td class="px-6 py-4 text-right font-mono">
+                                        <div class="flex flex-col items-end gap-0.5">
+                                            <span class="text-xs text-slate-500">
+                                                C:{" "}
+                                                {formatCurrency(item.coste_ud)}
+                                            </span>
+                                            <span class="text-slate-300">
+                                                V:{" "}
+                                                {formatCurrency(item.venta_ud)}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right font-mono text-primary-400 font-bold" data-val={item.beneficio_ud}>
+                                        {formatCurrency(item.beneficio_ud)}
+                                    </td>
+                                    <td class="px-6 py-4 text-right font-mono text-emerald-400" data-val={item.beneficio_total_30d}>
+                                        {formatCurrency(
+                                            item.beneficio_total_30d,
+                                        )}
+                                    </td>
+                                    <td class="px-6 py-4 text-center" data-val={sortValueState}>
+                                        {statusBadge}
+                                    </td>
+                                </tr>
+                            );
+                        })
+                    )
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

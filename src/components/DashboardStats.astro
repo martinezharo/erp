@@ -1,0 +1,239 @@
+---
+import { getAuthenticatedSupabase } from "../lib/supabase";
+
+interface Props {
+  projectId: number;
+}
+
+const { projectId } = Astro.props;
+
+const supabase = getAuthenticatedSupabase(Astro.cookies);
+
+// Fechas clave
+const now = new Date();
+const currentYear = now.getFullYear();
+const currentMonth = now.getMonth(); // 0-11
+const currentDay = now.getDate();
+const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+// Inicio de Trimestre (Ene, Abr, Jul, Oct)
+const startOfQuarterMonth = Math.floor(currentMonth / 3) * 3;
+const startOfQuarterDate = new Date(currentYear, startOfQuarterMonth, 1);
+const startOfQuarterStr = startOfQuarterDate.toISOString().split('T')[0];
+
+// Inicio de Mes Actual
+const startOfMonthDate = new Date(currentYear, currentMonth, 1);
+
+// Obtener datos desde el inicio del trimestre actual (cubre mes y trimestre)
+const { data: transactions, error } = await supabase
+  .from("vista_finanzas_diarias")
+  .select("*")
+  .eq("proyecto_id", projectId)
+  .gte("dia", startOfQuarterStr);
+
+if (error) {
+  console.error("Error fetching dashboard stats:", error);
+}
+
+// Inicializar acumuladores
+const stats = {
+  month: {
+    ingresos: 0,
+    gastos: 0,
+    balance: 0,
+    urp: 0,
+  },
+  quarter: {
+    ingresos: 0,
+    gastos: 0,
+    balance: 0,
+    saldo_iva: 0,
+    iva_soportado: 0,
+    iva_repercutido: 0,
+  },
+  prediction: {
+    ingresos: 0,
+    urp: 0,
+  }
+};
+
+// Procesar datos
+if (transactions) {
+  transactions.forEach((t) => {
+    const tDate = new Date(t.dia);
+    
+    // Trimestre (todos los datos traidos son del trimestre actual)
+    stats.quarter.ingresos += t.ingresos || 0;
+    stats.quarter.gastos += t.gastos || 0;
+    stats.quarter.balance += t.balance || 0;
+    stats.quarter.saldo_iva += t.saldo_iva || 0;
+    stats.quarter.iva_soportado += t.iva_soportado || 0;
+    stats.quarter.iva_repercutido += t.iva_repercutido || 0;
+
+    // Mes Actual
+    if (tDate >= startOfMonthDate) {
+      stats.month.ingresos += t.ingresos || 0;
+      stats.month.gastos += t.gastos || 0;
+      stats.month.balance += t.balance || 0;
+      stats.month.urp += t.urp || 0;
+    }
+  });
+}
+
+// Calcular Proyecciones Mensuales
+// Evitar división por cero y proyecciones locas el día 1
+const daysPassed = Math.max(1, currentDay);
+// Factor de proyección: si estamos a día 15 de 30, factor es 2.
+const projectionFactor = daysInMonth / daysPassed;
+
+stats.prediction.ingresos = stats.month.ingresos * projectionFactor;
+stats.prediction.urp = stats.month.urp * projectionFactor;
+
+// Formatter
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
+const formatNumber = (value: number) => {
+  return new Intl.NumberFormat("es-ES", {
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+// Nombres de meses para display
+const monthName = new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(now);
+const quarterName = `T${Math.floor(currentMonth / 3) + 1}`;
+
+---
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+  <!-- Balance Mes Actual -->
+  <div class="rounded-3xl bg-[#14151a] border border-white/5 p-6 relative overflow-hidden group">
+    <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+      <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500">
+        <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+        <line x1="16" x2="16" y1="2" y2="6"/>
+        <line x1="8" x2="8" y1="2" y2="6"/>
+        <line x1="3" x2="21" y1="10" y2="10"/>
+      </svg>
+    </div>
+    
+    <div class="relative z-10">
+      <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+        Balance {monthName}
+      </h3>
+      
+      <div class="grid grid-cols-2 gap-y-4 gap-x-2">
+        <div>
+          <p class="text-xs text-slate-500 mb-1">Ingresos</p>
+          <p class="text-lg font-bold text-emerald-400">{formatCurrency(stats.month.ingresos)}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 mb-1">Gastos</p>
+          <p class="text-lg font-bold text-red-400">{formatCurrency(stats.month.gastos)}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 mb-1">Balance</p>
+          <p class={`text-lg font-bold ${stats.month.balance >= 0 ? 'text-white' : 'text-red-400'}`}>
+            {formatCurrency(stats.month.balance)}
+          </p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 mb-1">URP</p>
+          <p class={`text-lg font-bold ${stats.month.urp >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+            {formatCurrency(stats.month.urp)}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Balance Trimestre Actual -->
+  <div class="rounded-3xl bg-[#14151a] border border-white/5 p-6 relative overflow-hidden group">
+    <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+      <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-purple-500">
+        <path d="M3 3v18h18"/>
+        <path d="m19 9-5 5-4-4-3 3"/>
+      </svg>
+    </div>
+
+    <div class="relative z-10">
+      <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+        Balance Trimestre {quarterName}
+      </h3>
+
+      <div class="grid grid-cols-2 gap-y-4 gap-x-2">
+        <div>
+          <p class="text-xs text-slate-500 mb-1">Ingresos</p>
+          <p class="text-lg font-bold text-emerald-400">{formatCurrency(stats.quarter.ingresos)}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 mb-1">Gastos</p>
+          <p class="text-lg font-bold text-red-400">{formatCurrency(stats.quarter.gastos)}</p>
+        </div>
+        <div class="col-span-2">
+          <p class="text-xs text-slate-500 mb-1">Balance</p>
+          <p class={`text-lg font-bold ${stats.quarter.balance >= 0 ? 'text-white' : 'text-red-400'}`}>
+            {formatCurrency(stats.quarter.balance)}
+          </p>
+        </div>
+        
+        <div class="col-span-2 pt-2 border-t border-white/5 mt-2">
+            <div class="flex justify-between items-end mb-1">
+                <p class="text-xs text-slate-500">Saldo IVA</p>
+                <div class="text-xs text-slate-600 flex gap-2">
+                    <span title="Soportado (Gastos)" class="text-red-400/60">S: {formatNumber(stats.quarter.iva_soportado)}€</span>
+                    <span title="Repercutido (Ventas)" class="text-emerald-400/60">R: {formatNumber(stats.quarter.iva_repercutido)}€</span>
+                </div>
+            </div>
+            <p class={`text-xl font-bold ${stats.quarter.saldo_iva >= 0 ? 'text-purple-400' : 'text-red-400'}`}>
+                {formatCurrency(stats.quarter.saldo_iva)}
+            </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Predicciones Mensuales -->
+  <div class="rounded-3xl bg-[#14151a] border border-white/5 p-6 relative overflow-hidden group">
+    <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+      <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+    </div>
+
+    <div class="relative z-10">
+      <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+        Proyección {monthName}
+      </h3>
+
+      <div class="space-y-6">
+        <div>
+          <div class="flex justify-between items-baseline mb-1">
+            <p class="text-xs text-slate-500">Ingresos Estimados</p>
+            <span class="text-[10px] text-amber-500/60 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                Día {currentDay}/{daysInMonth}
+            </span>
+          </div>
+          <p class="text-2xl font-bold text-white">{formatCurrency(stats.prediction.ingresos)}</p>
+          <div class="w-full bg-white/5 rounded-full h-1.5 mt-2 overflow-hidden">
+            <div class="bg-amber-500/50 h-full rounded-full" style={`width: ${Math.min(100, (currentDay/daysInMonth)*100)}%`}></div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-xs text-slate-500 mb-1">URP Estimado</p>
+          <p class="text-2xl font-bold text-blue-400">{formatCurrency(stats.prediction.urp)}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

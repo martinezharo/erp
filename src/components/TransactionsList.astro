@@ -1,0 +1,309 @@
+---
+interface TransactionDay {
+    dia: string;
+    ingresos: number;
+    gastos: number;
+    balance: number;
+    urp: number;
+    proyecto_id: number;
+}
+
+interface Props {
+  transactions: TransactionDay[];
+}
+
+const { transactions } = Astro.props;
+
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("es-ES", {
+        style: "currency",
+        currency: "EUR",
+    }).format(value);
+};
+---
+
+<div class="space-y-4">
+    {
+        transactions.length === 0 ? (
+            <div class="p-8 text-center text-slate-500 italic bg-white/5 rounded-2xl border border-white/5">
+                No hay transacciones registradas para este proyecto.
+            </div>
+        ) : (
+            transactions.map((t) => (
+            <div class="transaction-day-card group bg-[#1a1b23] border border-white/5 rounded-2xl p-0 hover:border-white/10 transition-all cursor-pointer" 
+                 data-date={t.dia} 
+                 data-project-id={t.proyecto_id}>
+                
+                <!-- Main Header (Summary) -->
+                <div class="p-6 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-white transition-colors">
+                            <span class="font-mono font-bold text-lg">
+                                {new Date(t.dia).getDate()}
+                            </span>
+                        </div>
+                        <div>
+                            <h4 class="text-white font-medium">
+                                {new Date(t.dia).toLocaleDateString("es-ES", {
+                                    weekday: "long",
+                                    month: "long",
+                                    year: "numeric",
+                                })}
+                            </h4>
+                            <div class="flex gap-3 text-xs mt-1">
+                                <span class="text-emerald-400">
+                                    Ingresos: +{formatCurrency(t.ingresos)}
+                                </span>
+                                <span class="text-red-400">
+                                    Gastos: -{formatCurrency(t.gastos)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-6">
+                        <div class="text-right">
+                            <div class="text-sm text-slate-400">URP</div>
+                            <div class="text-lg font-bold text-white font-mono">
+                                {formatCurrency(t.urp)}
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm text-slate-400">Balance</div>
+                            <div
+                                class={`text-lg font-bold ${t.balance >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                            >
+                                {t.balance >= 0 ? "+" : ""}
+                                {formatCurrency(t.balance)}
+                            </div>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-white/10 transition-colors">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 transition-transform duration-300 transform group-[.open]:rotate-180" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expanded Details (Hidden by default) -->
+                <div class="details-container hidden border-t border-white/5 bg-[#14151a]/50">
+                    <div class="p-4" id={`details-${t.dia}`}>
+                        <div class="text-center text-slate-500 py-4 loading-spinner">
+                            Cargando movimientos...
+                        </div>
+                        <!-- Content injected via JS -->
+                    </div>
+                </div>
+            </div>
+            ))
+        )
+    }
+</div>
+
+<script>
+    interface TransactionItem {
+        id: number;
+        type: string;
+        concept: string;
+        units: number;
+        amount: number;
+        channel: string;
+        status: string;
+    }
+
+    document.addEventListener("astro:page-load", () => {
+        document.querySelectorAll('.transaction-day-card').forEach(card => {
+            const header = card.querySelector('div:first-child') as HTMLElement;
+            const detailsContainer = card.querySelector('.details-container') as HTMLElement;
+            const contentArea = detailsContainer?.querySelector('div[id^="details-"]') as HTMLElement;
+            const date = (card as HTMLElement).dataset.date;
+            const projectId = (card as HTMLElement).dataset.projectId;
+
+            let loaded = false;
+
+            if (header && detailsContainer && contentArea) {
+                header.addEventListener('click', async (e) => {
+                    // Prevent toggle if clicking a button inside (like edit/delete if they were in header, but they are in body)
+                    if ((e.target as HTMLElement).closest('button')) return;
+
+                    // Toggle view
+                    const isOpen = !detailsContainer.classList.contains('hidden');
+                    
+                    if (isOpen) {
+                        detailsContainer.classList.add('hidden');
+                        card.classList.remove('open');
+                    } else {
+                        detailsContainer.classList.remove('hidden');
+                        card.classList.add('open');
+
+                        if (!loaded) {
+                            loadDetails(contentArea, date, projectId);
+                            loaded = true;
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    async function loadDetails(container: HTMLElement, date: string | undefined, projectId: string | undefined) {
+         try {
+            const res = await fetch(`/api/transactions/details?date=${date}&projectId=${projectId}`);
+            const items = await res.json();
+            renderDetails(container, items);
+        } catch (e) {
+            container.innerHTML = '<div class="text-red-400 p-4 text-center">Error cargando datos</div>';
+        }
+    }
+
+    function renderDetails(container: HTMLElement, items: TransactionItem[]) {
+        if (!items || items.length === 0) {
+            container.innerHTML = '<div class="text-slate-500 text-center py-4">No hay movimientos detallados</div>';
+            return;
+        }
+
+        let html = `
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-slate-400">
+                <thead class="text-xs text-slate-500 uppercase bg-white/5">
+                    <tr>
+                        <th class="px-4 py-3 rounded-l-lg">Tipo</th>
+                        <th class="px-4 py-3">Concepto / Productos</th>
+                        <th class="px-4 py-3 text-center">Uds</th>
+                        <th class="px-4 py-3 text-right">Importe</th>
+                        <th class="px-4 py-3">Canal</th>
+                        <th class="px-4 py-3 text-center">Estado</th>
+                        <th class="px-4 py-3 rounded-r-lg text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+        `;
+
+        items.forEach(item => {
+            let icon = '';
+            let colorClass = '';
+            
+            if (item.type === 'venta' || item.type === 'ingreso') {
+                icon = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>';
+                colorClass = 'text-emerald-400';
+            } else {
+                icon = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>';
+                colorClass = 'text-red-400';
+            }
+            
+            const amountFormatted = new Intl.NumberFormat("es-ES", {
+                style: "currency",
+                currency: "EUR",
+            }).format(item.amount);
+
+            html += `
+            <tr class="hover:bg-white/5 transition-colors group/row" id="row-${item.id}">
+                <td class="px-4 py-3 flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        ${icon}
+                    </div>
+                </td>
+                <td class="px-4 py-3">
+                    <div class="font-medium text-white">${item.concept}</div>
+                    <div class="text-xs text-slate-500 uppercase">${item.type}</div>
+                </td>
+                <td class="px-4 py-3 text-center font-mono">${item.units || '-'}</td>
+                <td class="px-4 py-3 text-right font-mono font-bold ${colorClass}">
+                    ${amountFormatted}
+                </td>
+                <td class="px-4 py-3">
+                    <span class="px-2 py-1 rounded text-xs bg-white/5 border border-white/10">
+                        ${item.channel}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                     <span class="px-2 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider 
+                        ${item.status === 'enviada' || item.status === 'completado' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}">
+                        ${item.status || 'N/A'}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                    <div class="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        <button class="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white btn-edit" 
+                                data-id="${item.id}" data-type="${item.type}" title="Editar">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                        </button>
+                         <button class="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 btn-delete" 
+                                 data-id="${item.id}" data-type="${item.type}" title="Eliminar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+
+        // Attach event listeners to new buttons
+        container.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = (btn as HTMLElement).dataset.id;
+                const type = (btn as HTMLElement).dataset.type;
+                if(confirm('¿Seguro que quieres eliminar este movimiento?')) {
+                    const row = container.querySelector(`#row-${id}`);
+                    if(row) (row as HTMLElement).style.opacity = '0.5';
+                    
+                    try {
+                        const res = await fetch(`/api/transactions/delete?id=${id}&type=${type}`, { method: 'DELETE' });
+                        if(res.ok) {
+                            if(row) row.remove();
+                            // Optional: Reload page to update totals, or update UI manually
+                            // For now, reloading is safer to keep totals in sync
+                            window.location.reload(); 
+                        } else {
+                            alert('Error al eliminar');
+                            if(row) (row as HTMLElement).style.opacity = '1';
+                        }
+                    } catch(err) {
+                        alert('Error de conexión');
+                        if(row) (row as HTMLElement).style.opacity = '1';
+                    }
+                }
+            });
+        });
+
+        // Edit listener
+        container.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = (btn as HTMLElement).dataset.id;
+                const type = (btn as HTMLElement).dataset.type;
+                
+                if (type === 'venta') {
+                    // Call global function from index.astro
+                    if ((window as any).loadSaleForEdit) {
+                        (window as any).loadSaleForEdit(id);
+                    } else {
+                        alert("Función de edición de ventas no disponible");
+                    }
+                } else if (type === 'compra') {
+                    if ((window as any).loadPurchaseForEdit) {
+                        (window as any).loadPurchaseForEdit(id);
+                    } else {
+                        alert("Función de edición de compras no disponible");
+                    }
+                } else if (type === 'ingreso' || type === 'gasto') {
+                    if ((window as any).loadOtherTransactionForEdit) {
+                        (window as any).loadOtherTransactionForEdit(id);
+                    } else {
+                        alert("Función de edición de otros no disponible");
+                    }
+                } else {
+                    alert(`Tipo desconocido: ${type}`);
+                }
+            });
+        });
+    }
+</script>

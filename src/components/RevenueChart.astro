@@ -1,0 +1,251 @@
+---
+interface Props {
+  projectId: number;
+}
+
+const { projectId } = Astro.props;
+---
+
+<div class="rounded-3xl bg-[#14151a] border border-white/5 p-6 mb-8 relative group">
+  <!-- Header with controls -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-white font-bold text-lg">Evolución de Ingresos</h3>
+        <div class="flex items-center gap-2">
+          <p class="text-slate-400 text-xs">Total del periodo:</p>
+          <span id="total-revenue" class="text-emerald-400 text-xs font-bold">0,00€</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex bg-white/5 p-1 rounded-lg border border-white/5">
+      <button
+        class="period-btn px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-white transition-all data-[active=true]:bg-white/10 data-[active=true]:text-white data-[active=true]:shadow-sm"
+        data-days="7"
+      >
+        7 días
+      </button>
+      <button
+        class="period-btn px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-white transition-all data-[active=true]:bg-white/10 data-[active=true]:text-white data-[active=true]:shadow-sm"
+        data-days="30"
+        data-active="true"
+      >
+        30 días
+      </button>
+      <button
+        class="period-btn px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-white transition-all data-[active=true]:bg-white/10 data-[active=true]:text-white data-[active=true]:shadow-sm"
+        data-days="90"
+      >
+        90 días
+      </button>
+    </div>
+  </div>
+
+  <!-- Chart Container -->
+  <div class="relative h-[300px] w-full">
+    <canvas id="revenueChart"></canvas>
+    
+    <!-- Loading State -->
+    <div id="chart-loader" class="absolute inset-0 flex items-center justify-center bg-[#14151a]/50 backdrop-blur-sm z-10 transition-opacity duration-300">
+      <div class="flex flex-col items-center gap-2">
+        <div class="w-6 h-6 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+        <span class="text-xs text-slate-400">Cargando datos...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import Chart from 'chart.js/auto';
+
+  let chartInstance: Chart | null = null;
+
+  function getProjectId() {
+    const config = document.getElementById('chart-config');
+    return config?.dataset.projectId;
+  }
+
+  async function loadChartData(days: number) {
+    const loader = document.getElementById('chart-loader');
+    if (loader) {
+        loader.classList.remove('opacity-0', 'pointer-events-none');
+        loader.classList.remove('hidden'); // Ensure visible
+    }
+
+    try {
+      const pid = getProjectId();
+      if (!pid) return;
+
+      const response = await fetch(`/api/stats/evolution?projectId=${pid}&days=${days}`);
+      if (!response.ok) throw new Error('Failed to fetch data');
+      
+      const data = await response.json();
+      updateChart(data);
+    } catch (error) {
+      console.error('Error loading chart data:', error);
+    } finally {
+      if (loader) {
+        loader.classList.add('opacity-0', 'pointer-events-none');
+        // Optional: wait for transition then hide
+      }
+    }
+  }
+
+  function updateChart(data: any[]) {
+    const canvas = document.getElementById('revenueChart') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Destroy existing chart if exists
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+
+    const labels = data.map((d: any) => {
+        const date = new Date(d.date);
+        return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    });
+    
+    const ingresos = data.map((d: any) => d.ingresos);
+    
+    // Calculate total revenue
+    const total = ingresos.reduce((sum: number, val: number) => sum + val, 0);
+    const totalElement = document.getElementById('total-revenue');
+    if (totalElement) {
+      totalElement.textContent = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(total);
+    }
+
+    // Create gradients
+    const gradientIngresos = ctx.createLinearGradient(0, 0, 0, 400);
+    gradientIngresos.addColorStop(0, 'rgba(16, 185, 129, 0.2)'); // Emerald
+    gradientIngresos.addColorStop(1, 'rgba(16, 185, 129, 0)');
+
+    chartInstance = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Ingresos',
+            data: ingresos,
+            borderColor: '#10b981', // Emerald 500
+            backgroundColor: gradientIngresos,
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#10b981',
+            pointBorderColor: '#14151a',
+            pointBorderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: 'index',
+        },
+        plugins: {
+          legend: {
+            display: false // Hide legend as there is only one dataset now
+          },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            titleColor: '#f8fafc',
+            bodyColor: '#cbd5e1',
+            borderColor: 'rgba(255,255,255,0.1)',
+            borderWidth: 1,
+            padding: 10,
+            displayColors: true,
+            callbacks: {
+              label: function(context: any) {
+                let label = context.dataset.label || '';
+                if (label) {
+                  label += ': ';
+                }
+                if (context.parsed.y !== null) {
+                  label += new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(context.parsed.y);
+                }
+                return label;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              display: false,
+            },
+            border: {
+              display: false
+            },
+            ticks: {
+              color: '#64748b',
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 8
+            }
+          },
+          y: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.05)',
+            },
+            border: {
+              display: false
+            },
+            beginAtZero: true,
+            ticks: {
+              color: '#64748b',
+              callback: function(value: any) {
+                return new Intl.NumberFormat('es-ES', { notation: "compact", compactDisplay: "short" }).format(value) + '€';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Setup function to be called on load
+  function setupChart() {
+    const buttons = document.querySelectorAll('.period-btn');
+    
+    // Remove old listeners to avoid duplicates if any (though Astro usually handles DOM replacement)
+    // Actually, elements are new, so just add listeners.
+    
+    buttons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement; // Use currentTarget for the button itself
+        
+        // Update UI
+        buttons.forEach(b => b.removeAttribute('data-active'));
+        target.setAttribute('data-active', 'true');
+
+        // Load data
+        const days = parseInt(target.dataset.days || '30');
+        loadChartData(days);
+      });
+    });
+
+    // Initial Load
+    loadChartData(30);
+  }
+
+  // Run on page load (initial and view transitions)
+  document.addEventListener('astro:page-load', setupChart);
+</script>
+
+<!-- Hidden element to pass server-side prop to client script -->
+<div id="chart-config" data-project-id={projectId} class="hidden"></div>

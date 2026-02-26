@@ -1,0 +1,557 @@
+<dialog
+    id="modal-venta"
+    class="bg-transparent m-auto backdrop:bg-black/80 backdrop:backdrop-blur-sm w-full max-w-4xl p-0 open:animate-fade-in relative z-50"
+>
+    <!-- Wrapper to center/style -->
+    <div
+        class="bg-[#14151a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl m-4"
+    >
+        <div
+            class="p-6 border-b border-white/5 flex items-center justify-between bg-white/5"
+        >
+            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-6 h-6 text-indigo-400"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <circle cx="8" cy="21" r="1" />
+                    <circle cx="19" cy="21" r="1" />
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                </svg>
+                Nueva Venta
+            </h3>
+            <button
+                onclick="document.getElementById('modal-venta').close()"
+                class="text-slate-400 hover:text-white transition-colors"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <form id="form-venta" class="p-6 space-y-6">
+            <!-- Cabecera Venta -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label
+                        class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
+                        >Fecha</label
+                    >
+                    <input
+                        type="date"
+                        name="fecha"
+                        required
+                        class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-all"
+                    />
+                </div>
+                <div>
+                    <label
+                        class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
+                        >Canal</label
+                    >
+                    <select
+                        id="sale-channel"
+                        name="canal"
+                        required
+                        class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-all"
+                    >
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+                <div>
+                    <label
+                        class="block text-xs font-medium text-indigo-300 uppercase tracking-wider mb-2"
+                        >Importe Total (Opcional)</label
+                    >
+                    <div class="relative">
+                        <input
+                            type="number"
+                            id="total-amount"
+                            step="0.01"
+                            class="w-full bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-4 py-3 text-indigo-100 placeholder-indigo-300/30 focus:outline-none focus:border-indigo-500 transition-all font-mono font-bold"
+                            placeholder="0.00"
+                        />
+                        <div
+                            class="absolute right-3 top-3 text-indigo-400 text-sm"
+                        >
+                            €
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1">
+                        Autocompleta precios unitarios
+                    </p>
+                </div>
+            </div>
+
+            <!-- Lista de Productos -->
+            <div class="border-t border-white/5 pt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4
+                        class="text-sm font-bold text-white uppercase tracking-wider"
+                    >
+                        Productos
+                    </h4>
+                    <button
+                        type="button"
+                        id="add-item-btn"
+                        class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-white transition-colors flex items-center gap-1"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Añadir Producto
+                    </button>
+                </div>
+
+                <div
+                    id="sale-items-container"
+                    class="space-y-4 max-h-[40vh] overflow-y-auto pr-2"
+                >
+                    <!-- Items dynamicos se añaden aquí -->
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-6 border-t border-white/5">
+                <button
+                    type="button"
+                    onclick="document.getElementById('modal-venta').close()"
+                    class="px-6 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="submit"
+                    class="px-6 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/20 transition-all"
+                >
+                    Guardar Venta
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<style>
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(4px);
+        animation: fade-in 0.2s ease-out;
+    }
+    dialog {
+        margin: auto; /* Ensure centering */
+    }
+    /* Fix for select options having white text on white background in some browsers */
+    select option {
+        background-color: #14151a;
+        color: white;
+    }
+    dialog[open] {
+        animation: zoom-in 0.3s ease-out;
+    }
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    @keyframes zoom-in {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+</style>
+
+<script>
+    import { currentProject } from "../stores/projectStore";
+
+    interface Product {
+        id: number;
+        name: string;
+        price: number;
+        stock: number;
+    }
+
+    interface SaleItem {
+        productId: number;
+        units: number;
+        price: number;
+        tax: number;
+    }
+
+    let products: Product[] = [];
+    let channels: string[] = [];
+    let activeProjectId: number | null = null;
+
+    // Subscribe to Store
+    currentProject.subscribe((project) => {
+        if (project) {
+            activeProjectId = project.id;
+            loadSalesData();
+        }
+    });
+
+    async function loadSalesData() {
+        try {
+            const response = await fetch("/api/sales/init-data");
+            const data = await response.json();
+            products = data.products || [];
+            channels = data.channels || [];
+
+            const channelSelect = document.getElementById(
+                "sale-channel",
+            ) as HTMLSelectElement;
+            if (channelSelect) {
+                channelSelect.innerHTML =
+                    '<option value="">Seleccionar canal</option>';
+                channels.forEach((channel: string) => {
+                    const option = document.createElement("option");
+                    option.value = channel;
+                    option.textContent = channel;
+                    channelSelect.appendChild(option);
+                });
+            }
+
+            updateProductSelects();
+        } catch (error) {
+            console.error("Error loading sales data:", error);
+        }
+    }
+
+    function updateProductSelects() {
+        const selects = document.querySelectorAll(
+            ".product-select",
+        ) as NodeListOf<HTMLSelectElement>;
+        selects.forEach((select) => {
+            if (select.options.length > 1) return;
+
+            products.forEach((product: Product) => {
+                const option = document.createElement("option");
+                option.value = product.id.toString();
+                option.textContent = product.name;
+                option.dataset.price = (product.price || 0).toString();
+                select.appendChild(option);
+            });
+        });
+    }
+
+    // Add Item Logic
+    function addSaleItemRow(data: any = null) {
+        const itemsContainer = document.getElementById("sale-items-container");
+        if (!itemsContainer) return;
+
+        const row = document.createElement("div");
+        row.className = "grid grid-cols-12 gap-2 items-end mb-2 sale-item-row";
+        row.innerHTML = `
+            <div class="col-span-5">
+                <label class="block text-xs text-slate-500 mb-1">Producto</label>
+                <select name="product[]" class="product-select w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500">
+                    <option value="">Seleccionar</option>
+                </select>
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs text-slate-500 mb-1">Uds</label>
+                <input type="number" name="units[]" class="units-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" placeholder="1" min="0.01" step="0.01" value="${data ? data.unidades : ""}">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs text-slate-500 mb-1">Precio</label>
+                <input type="number" name="price[]" step="0.01" class="price-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" placeholder="0.00" value="${data ? data.precio_unitario_venta : ""}">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs text-slate-500 mb-1">IVA %</label>
+                <input type="number" name="tax[]" class="tax-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" value="${data ? data.porcentaje_iva : "21"}">
+            </div>
+            <div class="col-span-1 flex justify-end pb-2">
+                <button type="button" class="remove-item text-red-400 hover:text-red-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        `;
+
+        itemsContainer.appendChild(row);
+
+        // Populate Select
+        const select = row.querySelector(
+            ".product-select",
+        ) as HTMLSelectElement;
+        products.forEach((product: Product) => {
+            const option = document.createElement("option");
+            option.value = product.id.toString();
+            option.textContent = product.name;
+            option.dataset.price = (product.price || 0).toString();
+            if (data && data.producto_id === product.id) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+
+        // Add event listeners for dynamic row
+        const priceInput = row.querySelector(
+            ".price-input",
+        ) as HTMLInputElement;
+
+        select.addEventListener("change", () => {
+            const option = select.options[select.selectedIndex];
+            if (option && option.dataset.price) {
+                if (
+                    !priceInput.value ||
+                    priceInput.value === "0" ||
+                    (data && document.activeElement === select)
+                ) {
+                    priceInput.value = parseFloat(option.dataset.price).toFixed(
+                        2,
+                    );
+                }
+                recalculateDistribution();
+            }
+        });
+
+        row.querySelector(".remove-item")?.addEventListener("click", () => {
+            row.remove();
+            recalculateDistribution();
+        });
+
+        row.querySelectorAll("input").forEach((input) => {
+            input.addEventListener("input", recalculateDistribution);
+        });
+    }
+
+    function recalculateDistribution() {
+        const totalAmountInput = document.getElementById(
+            "total-amount",
+        ) as HTMLInputElement;
+        const totalAmount = parseFloat(totalAmountInput?.value || "0");
+        if (totalAmount <= 0) return;
+
+        const rows = document.querySelectorAll(".sale-item-row");
+        let totalWeightedValue = 0;
+
+        interface DistributionItem {
+            row: Element;
+            units: number;
+            historicalPrice: number;
+        }
+        const items: DistributionItem[] = [];
+
+        rows.forEach((row) => {
+            const select = row.querySelector(
+                ".product-select",
+            ) as HTMLSelectElement;
+            const unitsInput = row.querySelector(
+                ".units-input",
+            ) as HTMLInputElement;
+            const option = select.options[select.selectedIndex];
+
+            const units = parseFloat(unitsInput.value || "0");
+            const historicalPrice =
+                option && option.dataset.price
+                    ? parseFloat(option.dataset.price)
+                    : 0;
+
+            if (units > 0 && historicalPrice > 0) {
+                totalWeightedValue += units * historicalPrice;
+                items.push({ row, units, historicalPrice });
+            }
+        });
+
+        if (totalWeightedValue === 0) return;
+
+        const ratio = totalAmount / totalWeightedValue;
+
+        items.forEach((item) => {
+            const newPrice = item.historicalPrice * ratio;
+            const priceInput = item.row.querySelector(
+                ".price-input",
+            ) as HTMLInputElement;
+            priceInput.value = newPrice.toFixed(2);
+        });
+    }
+
+    document.addEventListener("astro:page-load", () => {
+        const modalVenta = document.getElementById(
+            "modal-venta",
+        ) as HTMLDialogElement;
+        const formVenta = document.getElementById("form-venta") as HTMLFormElement;
+        const itemsContainer = document.getElementById("sale-items-container");
+        const addItemBtn = document.getElementById("add-item-btn");
+        const totalAmountInput = document.getElementById(
+            "total-amount",
+        ) as HTMLInputElement;
+
+        if (!modalVenta || !formVenta) return;
+
+        // Initialize data
+        loadSalesData();
+
+        addItemBtn?.addEventListener("click", () => addSaleItemRow());
+        totalAmountInput?.addEventListener("input", recalculateDistribution);
+
+        formVenta.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            if (!activeProjectId) {
+                alert("Selecciona un proyecto primero");
+                return;
+            }
+
+            const formData = new FormData(formVenta);
+            const rows = document.querySelectorAll(".sale-item-row");
+            const items: SaleItem[] = [];
+
+            rows.forEach((row) => {
+                const select = row.querySelector(
+                    ".product-select",
+                ) as HTMLSelectElement;
+                const units = row.querySelector(".units-input") as HTMLInputElement;
+                const price = row.querySelector(".price-input") as HTMLInputElement;
+                const tax = row.querySelector(".tax-input") as HTMLInputElement;
+
+                let finalUnits = 1;
+                if (units && units.value) {
+                    const parsed = parseFloat(units.value);
+                    if (!isNaN(parsed) && parsed > 0) finalUnits = parsed;
+                }
+
+                if (select && select.value) {
+                    items.push({
+                        productId: parseInt(select.value),
+                        units: finalUnits,
+                        price: parseFloat(price.value || "0"),
+                        tax: parseFloat(tax.value || "21"),
+                    });
+                }
+            });
+
+            const isEdit = !!formVenta.dataset.editingId;
+            const payload = {
+                projectId: activeProjectId,
+                date: formData.get("fecha"),
+                channel: formData.get("canal"),
+                items: items,
+                id: isEdit ? formVenta.dataset.editingId : undefined,
+            };
+
+            const endpoint = isEdit ? "/api/sales/update" : "/api/sales/create";
+            const method = isEdit ? "PUT" : "POST";
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                if (res.ok) {
+                    alert(
+                        isEdit
+                            ? "Venta actualizada correctamente"
+                            : "Venta guardada correctamente",
+                    );
+                    formVenta.reset();
+                    delete formVenta.dataset.editingId;
+                    const title = modalVenta.querySelector("h3");
+                    if (title) title.textContent = "Nueva Venta";
+
+                    if (itemsContainer) itemsContainer.innerHTML = "";
+                    modalVenta.close();
+                    window.location.reload();
+                } else {
+                    const err = await res.json();
+                    alert("Error al guardar: " + (err.error || "Desconocido"));
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión");
+            }
+        });
+
+        // Expose for external calls
+        (window as any).loadSaleForEdit = async (id: number) => {
+            try {
+                const res = await fetch(`/api/sales/get?id=${id}`);
+                if (!res.ok) throw new Error("Error loading sale");
+                const sale = await res.json();
+
+                if (modalVenta && formVenta) {
+                    // Set editing state
+                    formVenta.dataset.editingId = sale.id.toString();
+                    const title = modalVenta.querySelector("h3");
+                    if (title) title.textContent = `Editar Venta #${sale.id}`;
+
+                    // Fill fields
+                    const dateInput = formVenta.querySelector(
+                        'input[name="fecha"]',
+                    ) as HTMLInputElement;
+                    if (dateInput) {
+                        // Ensure YYYY-MM-DD from ISO string or similar
+                        dateInput.value = sale.fecha
+                            ? sale.fecha.split("T")[0]
+                            : "";
+                    }
+
+                    const channelSelect = formVenta.querySelector(
+                        'select[name="canal"]',
+                    ) as HTMLSelectElement;
+                    if (channelSelect) {
+                        if (
+                            !Array.from(channelSelect.options).some(
+                                (o) => o.value === sale.canal,
+                            )
+                        ) {
+                            const opt = document.createElement("option");
+                            opt.value = sale.canal;
+                            opt.textContent = sale.canal;
+                            channelSelect.appendChild(opt);
+                        }
+                        channelSelect.value = sale.canal;
+                    }
+
+                    // Fill Items
+                    if (itemsContainer) itemsContainer.innerHTML = "";
+                    sale.venta_detalle.forEach((d: any) => {
+                        addSaleItemRow(d);
+                    });
+
+                    modalVenta.showModal();
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error al cargar la venta");
+            }
+        };
+    });
+</script>

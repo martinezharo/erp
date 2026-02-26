@@ -1,0 +1,93 @@
+---
+import Layout from "../layouts/Layout.astro";
+import StockTable from "../components/StockTable.astro";
+import ProductModal from "../components/ProductModal.astro";
+import ProductHistoryModal from "../components/ProductHistoryModal.astro";
+import { getAuthenticatedSupabase } from "../lib/supabase";
+import type { VistaStockFinal } from "../types/database";
+
+const supabase = getAuthenticatedSupabase(Astro.cookies);
+
+let data: VistaStockFinal[] = [];
+let errorMsg = "";
+
+// Get Project ID
+const projectIdParam = Astro.url.searchParams.get("projectId");
+let projectId = projectIdParam ? parseInt(projectIdParam) : null;
+
+// If no project ID in URL, fetch the first available project to default to
+if (!projectId) {
+    const { data: projects } = await supabase
+        .from("proyectos")
+        .select("id")
+        .order("id", { ascending: true })
+        .limit(1);
+
+    if (projects && projects.length > 0) {
+        projectId = projects[0].id;
+    }
+}
+
+// Fetch data if we have a project ID
+if (projectId) {
+    const { data: stockData, error } = await supabase
+        .from("vista_stock_final")
+        .select("*")
+        .eq("proyecto_id", projectId);
+
+    if (error) {
+        errorMsg = error.message;
+    } else {
+        data = stockData || [];
+    }
+}
+---
+
+<Layout title="OlivERP | Stock">
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1
+                class="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-white to-slate-400"
+            >
+                Inventario & Stock
+            </h1>
+            <p class="text-slate-400 mt-2">
+                Gestión de productos y valoración de existencias
+            </p>
+        </div>
+
+        <div class="flex gap-3">
+            <button
+                onclick="document.getElementById('modal-producto').showModal()"
+                class="px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium text-sm transition-all shadow-lg shadow-primary-500/20 flex items-center gap-2 cursor-pointer"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"></path>
+                </svg>
+                Nuevo Producto
+            </button>
+        </div>
+    </div>
+
+    {
+        errorMsg && (
+            <div class="p-4 mb-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+                Error cargando datos: {errorMsg}
+            </div>
+        )
+    }
+
+    <StockTable data={data} />
+    <ProductModal />
+    <ProductHistoryModal />
+</Layout>

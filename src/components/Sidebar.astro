@@ -1,0 +1,102 @@
+---
+const { currentPath } = Astro.props;
+
+const menuItems = [
+    {
+        label: "Inicio",
+        path: "/",
+        icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
+    },
+    {
+        label: "Stock",
+        path: "/stock",
+        icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
+    },
+    {
+        label: "Transacciones",
+        path: "/transacciones",
+        icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+    },
+    {
+        label: "Historial",
+        path: "/historial",
+        icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+    },
+];
+---
+
+<aside
+    class="w-20 lg:w-64 h-screen fixed left-0 top-0 bg-[#0f1016]/95 backdrop-blur-xl border-r border-white/5 flex flex-col z-40 transition-all duration-300"
+>
+    <div
+        class="h-16 flex items-center justify-center lg:justify-start px-0 lg:px-6 border-b border-white/5"
+    >
+        <div
+            class="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-primary-500/20"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-6 h-6 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                ></path>
+            </svg>
+        </div>
+        <span
+            class="hidden lg:block ml-3 font-bold text-xl tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white to-slate-400"
+            >OlivERP</span
+        >
+    </div>
+
+    <nav class="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
+        {
+            menuItems.map((item) => {
+                const isActive = currentPath === item.path;
+                return (
+                    <a
+                        href={item.path + (Astro.url.search || "")}
+                        class:list={[
+                            "flex items-center px-3 py-3 rounded-xl transition-all duration-200 group relative overflow-hidden",
+                            isActive
+                                ? "bg-primary-500/10 text-primary-400"
+                                : "text-slate-400 hover:text-white hover:bg-white/5",
+                        ]}
+                    >
+                        {isActive && (
+                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary-500 rounded-r-full shadow-[0_0_12px_rgba(var(--primary-500),0.8)]" />
+                        )}
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class:list={[
+                                "w-6 h-6 transition-transform group-hover:scale-110",
+                                isActive
+                                    ? "text-primary-400"
+                                    : "text-slate-500 group-hover:text-white",
+                            ]}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d={item.icon}
+                            />
+                        </svg>
+                        <span class="hidden lg:block ml-3 font-medium tracking-wide">
+                            {item.label}
+                        </span>
+                    </a>
+                );
+            })
+        }
+    </nav>
+</aside>

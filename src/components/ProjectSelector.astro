@@ -1,0 +1,154 @@
+---
+import { getAuthenticatedSupabase } from "../lib/supabase";
+
+const supabase = getAuthenticatedSupabase(Astro.cookies);
+
+// Fetch projects on the server
+const { data: projects, error } = await supabase
+    .from("proyectos")
+    .select("*")
+    .order("id", { ascending: true });
+
+if (error) {
+    console.error("Error fetching projects:", error);
+}
+
+// Get the current project ID from the URL if present
+const currentProjectId = Astro.url.searchParams.get("projectId");
+const activeProject =
+    projects?.find((p) => p.id.toString() === currentProjectId) ||
+    projects?.[0]; // Default to first project if none selected
+---
+
+<div class="relative group">
+    <button
+        id="project-selector-btn"
+        data-active-project={JSON.stringify(activeProject)}
+        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm font-medium text-slate-200 w-full justify-between"
+    >
+        <div class="flex items-center gap-2">
+            <div
+                class="w-6 h-6 rounded-md bg-linear-to-br from-primary-400 to-primary-600 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-primary-500/20"
+            >
+                {activeProject?.nombre.substring(0, 1).toUpperCase() || "P"}
+            </div>
+            <span class="truncate max-w-[120px]"
+                >{activeProject?.nombre || "Seleccionar Proyecto"}</span
+            >
+        </div>
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4 text-slate-400 group-hover:text-white transition-transform group-hover:rotate-180"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+        >
+            <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"></path>
+        </svg>
+    </button>
+
+    <div
+        class="absolute top-full left-0 mt-2 w-56 p-1 rounded-xl bg-[#0f1016] border border-white/10 shadow-xl backdrop-blur-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top scale-95 group-hover:scale-100"
+    >
+        <div
+            class="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+        >
+            Mis Proyectos
+        </div>
+        <div class="space-y-0.5">
+            {
+                projects?.map((project) => (
+                    <a
+                        href={`?projectId=${project.id}`}
+                        class:list={[
+                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all group/item relative overflow-hidden",
+                            activeProject?.id === project.id
+                                ? "bg-primary-500/10 text-primary-400 border border-primary-500/20"
+                                : "text-slate-400 hover:text-white hover:bg-white/5",
+                        ]}
+                    >
+                        {activeProject?.id === project.id && (
+                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary-500 rounded-r-full shadow-[0_0_8px_rgba(var(--primary-500),0.5)]" />
+                        )}
+                        <span class="relative z-10 w-full truncate">
+                            {project.nombre}
+                        </span>
+                        {activeProject?.id === project.id && (
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="w-4 h-4 text-primary-500 ml-auto"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M5 13l4 4L19 7"
+                                />
+                            </svg>
+                        )}
+                    </a>
+                ))
+            }
+
+            {
+                (!projects || projects.length === 0) && (
+                    <div class="px-3 py-2 text-sm text-slate-500 italic">
+                        No hay proyectos
+                    </div>
+                )
+            }
+        </div>
+
+        <div class="h-px bg-white/5 my-1 mx-2"></div>
+
+        <button
+            class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors group/new"
+        >
+            <div
+                class="w-5 h-5 rounded-md border border-dashed border-slate-600 flex items-center justify-center group-hover/new:border-primary-500 group-hover/new:text-primary-500 transition-colors"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-3 h-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"></path>
+                </svg>
+            </div>
+            <span>Nuevo Proyecto</span>
+        </button>
+    </div>
+</div>
+
+<script>
+    import { currentProject } from "../stores/projectStore";
+
+    document.addEventListener("astro:page-load", () => {
+        // Read the active project from the button's data attribute
+        const btn = document.getElementById("project-selector-btn");
+        if (btn) {
+            const activeProjectData = (btn as HTMLElement).dataset.activeProject;
+            if (activeProjectData) {
+                try {
+                    const activeProject = JSON.parse(activeProjectData);
+                    currentProject.set(activeProject);
+                } catch (e) {
+                    console.error("Error parsing project data", e);
+                }
+            }
+        }
+    });
+</script>

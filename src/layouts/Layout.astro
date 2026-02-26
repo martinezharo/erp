@@ -1,0 +1,103 @@
+---
+import "../styles/global.css";
+import Sidebar from "../components/Sidebar.astro";
+import ProjectSelector from "../components/ProjectSelector.astro";
+import { ClientRouter } from "astro:transitions";
+
+interface Props {
+	title: string;
+	description?: string;
+}
+
+const { title, description = "OlivERP - Management System" } = Astro.props;
+const currentPath = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="es" class="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+			rel="stylesheet"
+		/>
+		<ClientRouter />
+		<style>
+			body {
+				font-family: "Outfit", sans-serif;
+			}
+			code,
+			pre,
+			.font-mono {
+				font-family: "JetBrains Mono", monospace;
+			}
+		</style>
+	</head>
+	<body class="bg-[#0f1016] text-slate-300 min-h-screen overflow-x-hidden">
+		<div class="flex h-screen overflow-hidden">
+			<!-- Sidebar -->
+			<Sidebar currentPath={currentPath} />
+
+			<!-- Main Content Area -->
+			<div
+				class="flex-1 flex flex-col min-w-0 transition-all duration-300 ml-20 lg:ml-64 relative"
+			>
+				<!-- Header -->
+				<header
+					class="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-[#0f1016]/80 backdrop-blur-md sticky top-0 z-30"
+				>
+					<div class="flex items-center gap-4">
+						<h2
+							class="text-xs font-bold text-slate-500 uppercase tracking-widest hidden md:block"
+						>
+							{title.split("|")[1]?.trim() || "Dashboard"}
+						</h2>
+					</div>
+
+					<div class="flex items-center gap-6">
+						<div class="w-64 hidden md:block">
+							<ProjectSelector />
+						</div>
+
+						<form action="/api/auth/signout" method="post">
+							<button
+								type="submit"
+								class="w-10 h-10 rounded-full bg-white/5 hover:bg-red-500/20 flex items-center justify-center transition-colors relative group"
+								title="Cerrar Sesión"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="w-5 h-5 text-slate-400 group-hover:text-red-400"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+									></path>
+								</svg>
+							</button>
+						</form>
+					</div>
+				</header>
+
+				<!-- Page Content -->
+				<main class="flex-1 overflow-y-auto p-6 scroll-smooth">
+					<div class="max-w-7xl mx-auto pb-10">
+						<slot />
+					</div>
+				</main>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,197 @@
+---
+import Layout from "../layouts/Layout.astro";
+import SalesModal from "../components/SalesModal.astro";
+import PurchaseModal from "../components/PurchaseModal.astro";
+import OtherTransactionModal from "../components/OtherTransactionModal.astro";
+import DashboardStats from "../components/DashboardStats.astro";
+import RevenueChart from "../components/RevenueChart.astro";
+import { getAuthenticatedSupabase } from "../lib/supabase";
+
+const { cookies } = Astro;
+const supabase = getAuthenticatedSupabase(cookies);
+
+const {
+	data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) {
+	return Astro.redirect("/login");
+}
+
+// Fetch some summary stats
+const { data: projects } = await supabase
+	.from("proyectos")
+	.select("id, nombre")
+	.limit(5);
+
+// but for the "Home" of the ERP, maybe we show an overview or force a selection.
+// Since Layout handles selection state via client-side/URL, we can check if there is a selected project.
+const projectIdParam = Astro.url.searchParams.get("projectId");
+let projectId = projectIdParam
+	? parseInt(projectIdParam)
+	: projects?.[0]?.id || null;
+
+if (projectId) {
+	// Mock fetching daily stats or implement real queries
+	// For now we'll just show the structure
+}
+---
+
+<Layout title="OlivERP | Dashboard">
+	<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+		<!-- Quick Action Cards -->
+		<button
+			id="btn-open-venta"
+			class="group relative overflow-hidden rounded-3xl bg-linear-to-br from-indigo-500/10 to-purple-500/10 border border-white/5 p-8 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:hover:shadow-indigo-500/20"
+		>
+			<div
+				class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-400">
+					<path d="M3 3v18h18"/>
+					<path d="m19 9-5 5-4-4-3 3"/>
+				</svg>
+			</div>
+			<div class="relative z-10">
+				<div class="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center mb-6 group-hover:bg-indigo-500/30 transition-colors">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-400">
+						<circle cx="8" cy="21" r="1"/>
+						<circle cx="19" cy="21" r="1"/>
+						<path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+					</svg>
+				</div>
+				<h3 class="text-2xl font-bold text-white mb-2">Nueva Venta</h3>
+				<p class="text-indigo-200/60 text-sm max-w-[180px] leading-relaxed">
+					Registrar salida de stock y generar ingreso
+				</p>
+				<div
+					class="mt-6 inline-flex items-center gap-2 text-indigo-400 font-medium text-sm group-hover:gap-3 transition-all"
+				>
+					<span>Comenzar</span>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M5 12h14"/>
+						<path d="m12 5 7 7-7 7"/>
+					</svg>
+				</div>
+			</div>
+		</button>
+
+		<button
+			onclick="document.getElementById('modal-compra').showModal()"
+			class="group relative overflow-hidden rounded-3xl bg-linear-to-br from-emerald-500/10 to-teal-500/10 border border-white/5 p-8 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/20"
+		>
+			<div
+				class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400">
+					<path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/>
+					<path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/>
+					<path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/>
+				</svg>
+			</div>
+			<div class="relative z-10">
+				<div class="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-6 group-hover:bg-emerald-500/30 transition-colors">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400">
+						<path d="m21 16-4 4-4-4"/>
+						<path d="M17 20V4"/>
+						<path d="m3 8 4-4 4 4"/>
+						<path d="M7 4v16"/>
+					</svg>
+				</div>
+				<h3 class="text-2xl font-bold text-white mb-2">Nueva Compra</h3>
+				<p class="text-emerald-200/60 text-sm max-w-[180px] leading-relaxed">
+					Registrar entrada de mercancía
+				</p>
+				<div
+					class="mt-6 inline-flex items-center gap-2 text-emerald-400 font-medium text-sm group-hover:gap-3 transition-all"
+				>
+					<span>Comenzar</span>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M5 12h14"/>
+						<path d="m12 5 7 7-7 7"/>
+					</svg>
+				</div>
+			</div>
+		</button>
+
+		<button
+			onclick="document.getElementById('modal-otro').showModal()"
+			class="group relative overflow-hidden rounded-3xl bg-linear-to-br from-pink-500/10 to-rose-500/10 border border-white/5 p-8 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-pink-500/20"
+		>
+			<div
+				class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-pink-400">
+					<rect width="20" height="14" x="2" y="5" rx="2"/>
+					<line x1="2" x2="22" y1="10" y2="10"/>
+				</svg>
+			</div>
+			<div class="relative z-10">
+				<div class="w-12 h-12 rounded-2xl bg-pink-500/20 flex items-center justify-center mb-6 group-hover:bg-pink-500/30 transition-colors">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pink-400">
+						<path d="M12 2v20"/>
+						<path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+					</svg>
+				</div>
+				<h3 class="text-2xl font-bold text-white mb-2">Ingreso / Gasto</h3>
+				<p class="text-pink-200/60 text-sm max-w-[180px] leading-relaxed">
+					Registrar movimientos varios
+				</p>
+				<div
+					class="mt-6 inline-flex items-center gap-2 text-pink-400 font-medium text-sm group-hover:gap-3 transition-all"
+				>
+					<span>Comenzar</span>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M5 12h14"/>
+						<path d="m12 5 7 7-7 7"/>
+					</svg>
+				</div>
+			</div>
+		</button>
+	</div>
+
+    {projectId && <DashboardStats projectId={projectId} />}
+    {projectId && <RevenueChart projectId={projectId} />}
+
+	<!-- Modals -->
+	<SalesModal />
+	<PurchaseModal />
+	<OtherTransactionModal />
+</Layout>
+
+<script>
+	// Helper to generic modals
+	function setupModal(modalId: string) {
+		const modal = document.getElementById(
+			modalId,
+		) as HTMLDialogElement | null;
+		if (!modal) return;
+		modal.addEventListener("click", (e) => {
+			if (e.target === modal) modal.close();
+		});
+	}
+
+	setupModal("modal-venta"); // SalesModal uses this ID
+	setupModal("modal-compra");
+	setupModal("modal-otro");
+
+	// Open Venta Modal Logic
+	const btnOpenVenta = document.getElementById("btn-open-venta");
+	if (btnOpenVenta) {
+		btnOpenVenta.addEventListener("click", () => {
+			const modal = document.getElementById(
+				"modal-venta",
+			) as HTMLDialogElement;
+			if (modal) {
+				modal.showModal();
+				// Optional: Set date to today if empty (logic also in SalesModal but harmless here)
+				const dateInput = modal.querySelector(
+					'input[name="fecha"]',
+				) as HTMLInputElement;
+				if (dateInput && !dateInput.value) {
+					dateInput.value = new Date().toISOString().split("T")[0];
+				}
+			}
+		});
+	}
+</script>
