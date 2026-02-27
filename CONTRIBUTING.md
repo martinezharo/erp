@@ -46,6 +46,13 @@ This section guides you through submitting an enhancement suggestion, including 
 5. **Make sure your code lints** (`pnpm astro check`).
 6. **Submit a Pull Request** with a comprehensive description of your changes.
 
+### Developing with Demo Mode
+
+If you want to contribute to the UI or frontend logic but don't want to set up a Supabase instance, you can use the **Demo Mode**. 
+
+Simply skip step 3 of the installation (skip the `.env` file credentials). The application will detect the absence of credentials and automatically populate the dashboard with realistic mock data, allowing you to develop and test your changes immediately.
+
+
 ## Styleguides
 
 ### Git Commit Messages

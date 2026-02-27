@@ -4,6 +4,9 @@
 
 ![OlivERP Dashboard Mockup](public/dashboard_preview.png)
 
+[**🌐 Live Demo**](https://oliverp.pages.dev)
+
+
 ## ✨ Features
 
 - � **Multi-Project Management**: Manage multiple businesses or side-projects from a single dashboard.
@@ -24,6 +27,15 @@
 - **Hosting**: [Cloudflare](https://www.cloudflare.com/) (Edge-ready deployment)
 - **Visuals**: [Chart.js](https://www.chartjs.org/) for data visualization
 - **State Management**: [Nano Stores](https://github.com/nanostores/nanostores)
+
+## 🕹️ Demo Mode
+
+OlivERP features an automatic **Demo Mode**. This allows anyone to explore the full interface and functionality without needing to set up a database or account.
+
+- **How it works**: If the Supabase environment variables are missing or undefined, the application automatically switches to Demo Mode.
+- **Mock Data**: The system provides realistic sample data for projects, products, stock levels, and historical financial transactions.
+- **Zero Configuration**: Perfect for testing the UI, exploring features, or contributing to the frontend without any backend overhead.
+
 
 ## 🚀 Getting Started
 
