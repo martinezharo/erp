@@ -1,16 +1,24 @@
 ---
-import { getAuthenticatedSupabase } from "../lib/supabase";
+import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
 
-const supabase = getAuthenticatedSupabase(Astro.cookies);
+let concepts: string[] = [];
 
-// Fetch distinct concepts for autocomplete
-const { data: rawConcepts } = await supabase
-    .from("otros_ingresos_gastos")
-    .select("concepto")
-    .order("concepto");
+if (!isDemoMode) {
+    const supabase = getAuthenticatedSupabase(Astro.cookies);
 
-// deduplicate
-const concepts = [...new Set(rawConcepts?.map((c) => c.concepto) || [])];
+    // Fetch distinct concepts for autocomplete
+    const { data: rawConcepts } = await supabase
+        .from("otros_ingresos_gastos")
+        .select("concepto")
+        .order("concepto");
+
+    // deduplicate
+    concepts = [
+        ...new Set(
+            rawConcepts?.map((c: { concepto: string }) => c.concepto) || []
+        ),
+    ] as string[];
+}
 ---
 
 <dialog
@@ -36,8 +44,9 @@ const concepts = [...new Set(rawConcepts?.map((c) => c.concepto) || [])];
                     stroke-linecap="round"
                     stroke-linejoin="round"
                 >
-                    <path d="M12 2v20" />
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    <path d="M12 2v20"></path>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
+                    ></path>
                 </svg>
                 Otros Ingresos / Gastos
             </h3>
@@ -55,8 +64,8 @@ const concepts = [...new Set(rawConcepts?.map((c) => c.concepto) || [])];
                     stroke-linecap="round"
                     stroke-linejoin="round"
                 >
-                    <path d="M18 6 6 18" />
-                    <path d="m6 6 12 12" />
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
                 </svg>
             </button>
         </div>
@@ -89,8 +98,9 @@ const concepts = [...new Set(rawConcepts?.map((c) => c.concepto) || [])];
                             stroke-linecap="round"
                             stroke-linejoin="round"
                         >
-                            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                            <polyline points="16 7 22 7 22 13" />
+                            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"
+                            ></polyline>
+                            <polyline points="16 7 22 7 22 13"></polyline>
                         </svg>
                         <span class="font-medium">Ingreso</span>
                     </label>
@@ -115,8 +125,9 @@ const concepts = [...new Set(rawConcepts?.map((c) => c.concepto) || [])];
                             stroke-linecap="round"
                             stroke-linejoin="round"
                         >
-                            <polyline points="22 17 13.5 8.5 8.5 13.5 2 7" />
-                            <polyline points="16 17 22 17 22 11" />
+                            <polyline points="22 17 13.5 8.5 8.5 13.5 2 7"
+                            ></polyline>
+                            <polyline points="16 17 22 17 22 11"></polyline>
                         </svg>
                         <span class="font-medium">Gasto</span>
                     </label>
@@ -178,8 +189,8 @@ const concepts = [...new Set(rawConcepts?.map((c) => c.concepto) || [])];
                         >Porcentaje IVA (%) <span
                             class="text-slate-600 text-[10px] lowercase"
                             >(opcional)</span
-                        ></label
-                    >
+                        >
+                    </label>
                     <input
                         type="number"
                         name="porcentaje_iva"
@@ -267,7 +278,9 @@ const concepts = [...new Set(rawConcepts?.map((c) => c.concepto) || [])];
     });
 
     document.addEventListener("astro:page-load", () => {
-        const modal = document.getElementById("modal-otro") as HTMLDialogElement;
+        const modal = document.getElementById(
+            "modal-otro"
+        ) as HTMLDialogElement;
         const form = document.getElementById("form-otro") as HTMLFormElement;
 
         if (!modal || !form) return;
@@ -275,7 +288,7 @@ const concepts = [...new Set(rawConcepts?.map((c) => c.concepto) || [])];
         // Helper to set date to today (local)
         function setDateToToday() {
             const dateInput = form?.querySelector(
-                'input[name="fecha"]',
+                'input[name="fecha"]'
             ) as HTMLInputElement;
             if (dateInput) {
                 const now = new Date();
@@ -361,38 +374,40 @@ const concepts = [...new Set(rawConcepts?.map((c) => c.concepto) || [])];
                     form.dataset.editingId = data.id.toString();
 
                     // Fill fields
-                    const tipoInputs = form.querySelectorAll('input[name="tipo"]');
+                    const tipoInputs =
+                        form.querySelectorAll('input[name="tipo"]');
                     tipoInputs.forEach((input: any) => {
                         if (input.value === data.tipo) input.checked = true;
                     });
 
                     const dateInput = form.querySelector(
-                        'input[name="fecha"]',
+                        'input[name="fecha"]'
                     ) as HTMLInputElement;
                     if (dateInput) dateInput.value = data.fecha.split("T")[0];
 
                     (
                         form.querySelector(
-                            'input[name="concepto"]',
+                            'input[name="concepto"]'
                         ) as HTMLInputElement
                     ).value = data.concepto;
                     (
                         form.querySelector(
-                            'textarea[name="descripcion"]',
+                            'textarea[name="descripcion"]'
                         ) as HTMLInputElement
                     ).value = data.descripcion || "";
                     (
                         form.querySelector(
-                            'input[name="importe"]',
+                            'input[name="importe"]'
                         ) as HTMLInputElement
                     ).value = data.importe;
                     (
                         form.querySelector(
-                            'input[name="porcentaje_iva"]',
+                            'input[name="porcentaje_iva"]'
                         ) as HTMLInputElement
                     ).value = data.porcentaje_iva || "";
 
-                    modal.querySelector("h3")!.textContent = "Editar Transacción";
+                    modal.querySelector("h3")!.textContent =
+                        "Editar Transacción";
                     modal.showModal();
                 }
             } catch (e) {

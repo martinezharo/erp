@@ -3,10 +3,9 @@ import Layout from "../layouts/Layout.astro";
 import StockTable from "../components/StockTable.astro";
 import ProductModal from "../components/ProductModal.astro";
 import ProductHistoryModal from "../components/ProductHistoryModal.astro";
-import { getAuthenticatedSupabase } from "../lib/supabase";
+import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
+import { mockStock, mockProjects } from "../lib/mock-data";
 import type { VistaStockFinal } from "../types/database";
-
-const supabase = getAuthenticatedSupabase(Astro.cookies);
 
 let data: VistaStockFinal[] = [];
 let errorMsg = "";
@@ -15,35 +14,70 @@ let errorMsg = "";
 const projectIdParam = Astro.url.searchParams.get("projectId");
 let projectId = projectIdParam ? parseInt(projectIdParam) : null;
 
-// If no project ID in URL, fetch the first available project to default to
-if (!projectId) {
-    const { data: projects } = await supabase
-        .from("proyectos")
-        .select("id")
-        .order("id", { ascending: true })
-        .limit(1);
-
-    if (projects && projects.length > 0) {
-        projectId = projects[0].id;
+if (isDemoMode) {
+    if (!projectId) {
+        projectId = mockProjects[0]?.id || null;
     }
-}
+    if (projectId) {
+        data = mockStock.filter((s) => s.proyecto_id === projectId);
+    }
+} else {
+    const supabase = getAuthenticatedSupabase(Astro.cookies);
 
-// Fetch data if we have a project ID
-if (projectId) {
-    const { data: stockData, error } = await supabase
-        .from("vista_stock_final")
-        .select("*")
-        .eq("proyecto_id", projectId);
+    // If no project ID in URL, fetch the first available project to default to
+    if (!projectId) {
+        const { data: projects } = await supabase
+            .from("proyectos")
+            .select("id")
+            .order("id", { ascending: true })
+            .limit(1);
 
-    if (error) {
-        errorMsg = error.message;
-    } else {
-        data = stockData || [];
+        if (projects && projects.length > 0) {
+            projectId = projects[0].id;
+        }
+    }
+
+    // Fetch data if we have a project ID
+    if (projectId) {
+        const { data: stockData, error } = await supabase
+            .from("vista_stock_final")
+            .select("*")
+            .eq("proyecto_id", projectId);
+
+        if (error) {
+            errorMsg = error.message;
+        } else {
+            data = stockData || [];
+        }
     }
 }
 ---
 
 <Layout title="OlivERP | Stock">
+    {
+        isDemoMode && (
+            <div class="mb-6 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-5 h-5 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                </svg>
+                <span>
+                    <strong>Modo Demo</strong> — Datos de ejemplo.
+                </span>
+            </div>
+        )
+    }
+
     <div class="mb-8 flex items-center justify-between">
         <div>
             <h1

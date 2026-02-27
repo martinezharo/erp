@@ -5,10 +5,9 @@ import SalesModal from "../components/SalesModal.astro";
 import PurchaseModal from "../components/PurchaseModal.astro";
 import OtherTransactionModal from "../components/OtherTransactionModal.astro";
 import Pagination from "../components/Pagination.astro";
-import { getAuthenticatedSupabase } from "../lib/supabase";
+import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
+import { mockFinanzas, mockProjects } from "../lib/mock-data";
 import type { VistaFinanzasDiarias } from "../types/database";
-
-const supabase = getAuthenticatedSupabase(Astro.cookies);
 
 let data: VistaFinanzasDiarias[] = [];
 let errorMsg = "";
@@ -16,19 +15,6 @@ let errorMsg = "";
 // Get Project ID
 const projectIdParam = Astro.url.searchParams.get("projectId");
 let projectId = projectIdParam ? parseInt(projectIdParam) : null;
-
-// If no project ID in URL, fetch the first available project to default to
-if (!projectId) {
-    const { data: projects } = await supabase
-        .from("proyectos")
-        .select("id")
-        .order("id", { ascending: true })
-        .limit(1);
-
-    if (projects && projects.length > 0) {
-        projectId = projects[0].id;
-    }
-}
 
 // Pagination
 const pageParam = Astro.url.searchParams.get("page");
@@ -40,30 +26,83 @@ const to = from + pageSize - 1;
 let totalCount = 0;
 let totalPages = 0;
 
-// Fetch data if we have a project ID
-if (projectId) {
-    const {
-        data: transactionsData,
-        error,
-        count,
-    } = await supabase
-        .from("vista_finanzas_diarias")
-        .select("*", { count: "exact" })
-        .eq("proyecto_id", projectId)
-        .order("dia", { ascending: false })
-        .range(from, to);
+if (isDemoMode) {
+    if (!projectId) {
+        projectId = mockProjects[0]?.id || null;
+    }
 
-    if (error) {
-        errorMsg = error.message;
-    } else {
-        data = transactionsData || [];
-        totalCount = count || 0;
+    if (projectId) {
+        const filtered = mockFinanzas
+            .filter((f) => f.proyecto_id === projectId)
+            .sort((a, b) => b.dia.localeCompare(a.dia));
+
+        totalCount = filtered.length;
         totalPages = Math.ceil(totalCount / pageSize);
+        data = filtered.slice(from, to + 1);
+    }
+} else {
+    const supabase = getAuthenticatedSupabase(Astro.cookies);
+
+    if (!projectId) {
+        const { data: projects } = await supabase
+            .from("proyectos")
+            .select("id")
+            .order("id", { ascending: true })
+            .limit(1);
+
+        if (projects && projects.length > 0) {
+            projectId = projects[0].id;
+        }
+    }
+
+    if (projectId) {
+        const {
+            data: transactionsData,
+            error,
+            count,
+        } = await supabase
+            .from("vista_finanzas_diarias")
+            .select("*", { count: "exact" })
+            .eq("proyecto_id", projectId)
+            .order("dia", { ascending: false })
+            .range(from, to);
+
+        if (error) {
+            errorMsg = error.message;
+        } else {
+            data = transactionsData || [];
+            totalCount = count || 0;
+            totalPages = Math.ceil(totalCount / pageSize);
+        }
     }
 }
 ---
 
 <Layout title="OlivERP | Transacciones">
+    {
+        isDemoMode && (
+            <div class="mb-6 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-5 h-5 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                </svg>
+                <span>
+                    <strong>Modo Demo</strong> — Datos de ejemplo.
+                </span>
+            </div>
+        )
+    }
+
     <div class="mb-8 flex items-center justify-between">
         <div>
             <h1

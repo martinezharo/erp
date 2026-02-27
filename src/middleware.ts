@@ -1,6 +1,12 @@
 import { defineMiddleware } from "astro/middleware";
+import { isDemoMode } from "./lib/supabase";
 
 export const onRequest = defineMiddleware(async ({ cookies, redirect, request }, next) => {
+    // In demo mode, skip all authentication checks
+    if (isDemoMode) {
+        return next();
+    }
+
     const accessToken = cookies.get("sb-access-token");
     const refreshToken = cookies.get("sb-refresh-token");
 

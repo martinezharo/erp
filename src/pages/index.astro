@@ -5,39 +5,66 @@ import PurchaseModal from "../components/PurchaseModal.astro";
 import OtherTransactionModal from "../components/OtherTransactionModal.astro";
 import DashboardStats from "../components/DashboardStats.astro";
 import RevenueChart from "../components/RevenueChart.astro";
-import { getAuthenticatedSupabase } from "../lib/supabase";
+import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
+import { mockProjects } from "../lib/mock-data";
 
-const { cookies } = Astro;
-const supabase = getAuthenticatedSupabase(cookies);
+let projects: any[] = [];
 
-const {
-	data: { user },
-} = await supabase.auth.getUser();
+if (isDemoMode) {
+	projects = mockProjects.map((p) => ({ id: p.id, nombre: p.nombre }));
+} else {
+	const { cookies } = Astro;
+	const supabase = getAuthenticatedSupabase(cookies);
 
-if (!user) {
-	return Astro.redirect("/login");
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+
+	if (!user) {
+		return Astro.redirect("/login");
+	}
+
+	const { data } = await supabase
+		.from("proyectos")
+		.select("id, nombre")
+		.limit(5);
+
+	projects = data || [];
 }
 
-// Fetch some summary stats
-const { data: projects } = await supabase
-	.from("proyectos")
-	.select("id, nombre")
-	.limit(5);
-
-// but for the "Home" of the ERP, maybe we show an overview or force a selection.
-// Since Layout handles selection state via client-side/URL, we can check if there is a selected project.
 const projectIdParam = Astro.url.searchParams.get("projectId");
 let projectId = projectIdParam
 	? parseInt(projectIdParam)
 	: projects?.[0]?.id || null;
-
-if (projectId) {
-	// Mock fetching daily stats or implement real queries
-	// For now we'll just show the structure
-}
 ---
 
 <Layout title="OlivERP | Dashboard">
+	{
+		isDemoMode && (
+			<div class="mb-6 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="w-5 h-5 shrink-0"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
+				</svg>
+				<span>
+					<strong>Modo Demo</strong> — Estás viendo datos de ejemplo.
+					Configura las variables de entorno de Supabase para conectar
+					con datos reales.
+				</span>
+			</div>
+		)
+	}
+
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 		<!-- Quick Action Cards -->
 		<button
@@ -47,30 +74,70 @@ if (projectId) {
 			<div
 				class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500"
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-400">
-					<path d="M3 3v18h18"/>
-					<path d="m19 9-5 5-4-4-3 3"/>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="96"
+					height="96"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="text-indigo-400"
+				>
+					<path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"
+					></path>
 				</svg>
 			</div>
 			<div class="relative z-10">
-				<div class="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center mb-6 group-hover:bg-indigo-500/30 transition-colors">
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-400">
-						<circle cx="8" cy="21" r="1"/>
-						<circle cx="19" cy="21" r="1"/>
-						<path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+				<div
+					class="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center mb-6 group-hover:bg-indigo-500/30 transition-colors"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="text-indigo-400"
+					>
+						<circle cx="8" cy="21" r="1"></circle><circle
+							cx="19"
+							cy="21"
+							r="1"></circle>
+						<path
+							d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"
+						></path>
 					</svg>
 				</div>
 				<h3 class="text-2xl font-bold text-white mb-2">Nueva Venta</h3>
-				<p class="text-indigo-200/60 text-sm max-w-[180px] leading-relaxed">
+				<p
+					class="text-indigo-200/60 text-sm max-w-[180px] leading-relaxed"
+				>
 					Registrar salida de stock y generar ingreso
 				</p>
 				<div
 					class="mt-6 inline-flex items-center gap-2 text-indigo-400 font-medium text-sm group-hover:gap-3 transition-all"
 				>
 					<span>Comenzar</span>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M5 12h14"/>
-						<path d="m12 5 7 7-7 7"/>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M5 12h14"></path><path d="m12 5 7 7-7 7"
+						></path>
 					</svg>
 				</div>
 			</div>
@@ -83,32 +150,69 @@ if (projectId) {
 			<div
 				class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500"
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400">
-					<path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/>
-					<path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/>
-					<path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="96"
+					height="96"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="text-emerald-400"
+				>
+					<path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"
+					></path>
+					<path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path>
+					<path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"
+					></path>
 				</svg>
 			</div>
 			<div class="relative z-10">
-				<div class="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-6 group-hover:bg-emerald-500/30 transition-colors">
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400">
-						<path d="m21 16-4 4-4-4"/>
-						<path d="M17 20V4"/>
-						<path d="m3 8 4-4 4 4"/>
-						<path d="M7 4v16"/>
+				<div
+					class="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-6 group-hover:bg-emerald-500/30 transition-colors"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="text-emerald-400"
+					>
+						<path d="m21 16-4 4-4-4"></path><path d="M17 20V4"
+						></path>
+						<path d="m3 8 4-4 4 4"></path><path d="M7 4v16"></path>
 					</svg>
 				</div>
 				<h3 class="text-2xl font-bold text-white mb-2">Nueva Compra</h3>
-				<p class="text-emerald-200/60 text-sm max-w-[180px] leading-relaxed">
+				<p
+					class="text-emerald-200/60 text-sm max-w-[180px] leading-relaxed"
+				>
 					Registrar entrada de mercancía
 				</p>
 				<div
 					class="mt-6 inline-flex items-center gap-2 text-emerald-400 font-medium text-sm group-hover:gap-3 transition-all"
 				>
 					<span>Comenzar</span>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M5 12h14"/>
-						<path d="m12 5 7 7-7 7"/>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M5 12h14"></path><path d="m12 5 7 7-7 7"
+						></path>
 					</svg>
 				</div>
 			</div>
@@ -121,37 +225,76 @@ if (projectId) {
 			<div
 				class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500"
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-pink-400">
-					<rect width="20" height="14" x="2" y="5" rx="2"/>
-					<line x1="2" x2="22" y1="10" y2="10"/>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="96"
+					height="96"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="text-pink-400"
+				>
+					<rect width="20" height="14" x="2" y="5" rx="2"></rect>
+					<line x1="2" x2="22" y1="10" y2="10"></line>
 				</svg>
 			</div>
 			<div class="relative z-10">
-				<div class="w-12 h-12 rounded-2xl bg-pink-500/20 flex items-center justify-center mb-6 group-hover:bg-pink-500/30 transition-colors">
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pink-400">
-						<path d="M12 2v20"/>
-						<path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+				<div
+					class="w-12 h-12 rounded-2xl bg-pink-500/20 flex items-center justify-center mb-6 group-hover:bg-pink-500/30 transition-colors"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="text-pink-400"
+					>
+						<path d="M12 2v20"></path><path
+							d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
+						></path>
 					</svg>
 				</div>
-				<h3 class="text-2xl font-bold text-white mb-2">Ingreso / Gasto</h3>
-				<p class="text-pink-200/60 text-sm max-w-[180px] leading-relaxed">
+				<h3 class="text-2xl font-bold text-white mb-2">
+					Ingreso / Gasto
+				</h3>
+				<p
+					class="text-pink-200/60 text-sm max-w-[180px] leading-relaxed"
+				>
 					Registrar movimientos varios
 				</p>
 				<div
 					class="mt-6 inline-flex items-center gap-2 text-pink-400 font-medium text-sm group-hover:gap-3 transition-all"
 				>
 					<span>Comenzar</span>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M5 12h14"/>
-						<path d="m12 5 7 7-7 7"/>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M5 12h14"></path><path d="m12 5 7 7-7 7"
+						></path>
 					</svg>
 				</div>
 			</div>
 		</button>
 	</div>
 
-    {projectId && <DashboardStats projectId={projectId} />}
-    {projectId && <RevenueChart projectId={projectId} />}
+	{projectId && <DashboardStats projectId={projectId} />}
+	{projectId && <RevenueChart projectId={projectId} />}
 
 	<!-- Modals -->
 	<SalesModal />
@@ -163,7 +306,7 @@ if (projectId) {
 	// Helper to generic modals
 	function setupModal(modalId: string) {
 		const modal = document.getElementById(
-			modalId,
+			modalId
 		) as HTMLDialogElement | null;
 		if (!modal) return;
 		modal.addEventListener("click", (e) => {
@@ -180,13 +323,13 @@ if (projectId) {
 	if (btnOpenVenta) {
 		btnOpenVenta.addEventListener("click", () => {
 			const modal = document.getElementById(
-				"modal-venta",
+				"modal-venta"
 			) as HTMLDialogElement;
 			if (modal) {
 				modal.showModal();
 				// Optional: Set date to today if empty (logic also in SalesModal but harmless here)
 				const dateInput = modal.querySelector(
-					'input[name="fecha"]',
+					'input[name="fecha"]'
 				) as HTMLInputElement;
 				if (dateInput && !dateInput.value) {
 					dateInput.value = new Date().toISOString().split("T")[0];

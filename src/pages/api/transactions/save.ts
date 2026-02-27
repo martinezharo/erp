@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { getAuthenticatedSupabase } from "../../../lib/supabase";
+import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
     return handleSave(request, cookies, "POST");
@@ -10,6 +10,10 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
 };
 
 async function handleSave(request: Request, cookies: any, method: string) {
+    if (isDemoMode) {
+        return new Response(JSON.stringify({ error: "No disponible en modo demo" }), { status: 403 });
+    }
+
     const supabase = getAuthenticatedSupabase(cookies);
     const { data: { user } } = await supabase.auth.getUser();
 

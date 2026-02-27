@@ -1,7 +1,11 @@
 import type { APIRoute } from "astro";
-import { getAuthenticatedSupabase } from "../../../lib/supabase";
+import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
 
 export const GET: APIRoute = async ({ cookies, url }) => {
+    if (isDemoMode) {
+        return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    }
+
     const supabase = getAuthenticatedSupabase(cookies);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -23,10 +27,10 @@ export const GET: APIRoute = async ({ cookies, url }) => {
         // Since Supabase JS client doesn't support complex joins in one go easily if relationships aren't perfect,
         // we might need to fetch movements first, then fetch details if needed, or use a view.
         // But let's try deep select first. Assuming foreign keys are set up correctly.
-        
+
         // Note: Based on previous context, we might not have perfect FK definitions for deep selection in the types,
         // but let's assume the standard Supabase structure.
-        
+
         const { data: movements, error } = await supabase
             .from('movimientos_stock')
             .select(`
@@ -84,7 +88,7 @@ export const GET: APIRoute = async ({ cookies, url }) => {
                 canal
             };
         });
-        
+
         // Re-sort by date in case the source date (purchase/sale) is different from movement creation date
         formattedMovements.sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 

@@ -1,5 +1,11 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { isDemoMode } from "../lib/supabase";
+
+// In demo mode, redirect straight to dashboard
+if (isDemoMode) {
+    return Astro.redirect("/");
+}
 
 const { cookies } = Astro;
 

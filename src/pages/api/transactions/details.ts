@@ -1,7 +1,11 @@
 import type { APIRoute } from "astro";
-import { getAuthenticatedSupabase } from "../../../lib/supabase";
+import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
 
 export const GET: APIRoute = async ({ request, cookies }) => {
+    if (isDemoMode) {
+        return new Response(JSON.stringify([]), { status: 200 });
+    }
+
     const supabase = getAuthenticatedSupabase(cookies);
     const url = new URL(request.url);
     const date = url.searchParams.get("date");
