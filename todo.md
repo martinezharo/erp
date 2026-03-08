@@ -1,3 +1,4 @@
 - Transaction filters
 - Manage refunds and returns through the database and enable editing the sale status.
 - Default the purchase price to the most recent transaction only.
+- Reverse color of VAT balance.
