@@ -251,17 +251,21 @@ const quarterName = `T${Math.floor(currentMonth / 3) + 1}`;
           <div class="flex justify-between items-end mb-1">
             <p class="text-xs text-slate-500">Saldo IVA</p>
             <div class="text-xs text-slate-600 flex gap-2">
-              <span title="Soportado (Gastos)" class="text-red-400/60"
+              <span title="Soportado (IVA deducible en compras)" class="text-emerald-400/60"
                 >S: {formatNumber(stats.quarter.iva_soportado)}€</span
               >
-              <span title="Repercutido (Ventas)" class="text-emerald-400/60"
+              <span title="Repercutido (IVA cobrado en ventas)" class="text-red-400/60"
                 >R: {formatNumber(stats.quarter.iva_repercutido)}€</span
               >
             </div>
           </div>
           <p
             class={`text-xl font-bold ${
-              stats.quarter.saldo_iva >= 0 ? "text-purple-400" : "text-red-400"
+              stats.quarter.saldo_iva > 0 
+                ? "text-red-400" 
+                : stats.quarter.saldo_iva < 0 
+                  ? "text-emerald-400" 
+                  : "text-purple-400"
             }`}
           >
             {formatCurrency(stats.quarter.saldo_iva)}
