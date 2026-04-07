@@ -26,10 +26,10 @@ const menuItems = [
 ---
 
 <aside
-    class="w-20 lg:w-64 h-screen fixed left-0 top-0 bg-[#0f1016]/95 backdrop-blur-xl border-r border-white/5 flex flex-col z-40 transition-all duration-300"
+    class="fixed bottom-0 left-0 right-0 h-16 flex flex-row lg:right-auto lg:top-0 lg:bottom-auto lg:w-64 lg:h-screen lg:flex-col bg-[#0f1016]/95 backdrop-blur-xl border-t border-white/5 lg:border-t-0 lg:border-r z-40 transition-all duration-300"
 >
     <div
-        class="h-16 flex items-center justify-center lg:justify-start px-0 lg:px-6 border-b border-white/5"
+        class="hidden lg:flex h-16 items-center justify-center lg:justify-start px-0 lg:px-6 border-b border-white/5"
     >
         <div
             class="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-primary-500/20"
@@ -42,7 +42,7 @@ const menuItems = [
         >
     </div>
 
-    <nav class="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
+    <nav class="flex-1 flex flex-row lg:flex-col py-0 lg:py-6 px-0 lg:px-3 lg:space-y-2 overflow-x-auto lg:overflow-y-auto items-stretch justify-around lg:justify-start">
         {
             menuItems.map((item) => {
                 const isActive = currentPath === item.path;
@@ -50,14 +50,14 @@ const menuItems = [
                     <a
                         href={item.path + (Astro.url.search || "")}
                         class:list={[
-                            "flex items-center px-3 py-3 rounded-xl transition-all duration-200 group relative overflow-hidden",
+                            "flex-1 lg:flex-none flex flex-col lg:flex-row items-center justify-center lg:justify-start px-2 lg:px-3 py-2 lg:py-3 rounded-xl transition-all duration-200 group relative overflow-hidden",
                             isActive
                                 ? "bg-primary-500/10 text-primary-400"
                                 : "text-slate-400 hover:text-white hover:bg-white/5",
                         ]}
                     >
                         {isActive && (
-                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary-500 rounded-r-full shadow-[0_0_12px_rgba(var(--primary-500),0.8)]" />
+                            <div class="hidden lg:block absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary-500 rounded-r-full shadow-[0_0_12px_rgba(var(--primary-500),0.8)]" />
                         )}
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -78,6 +78,9 @@ const menuItems = [
                                 d={item.icon}
                             />
                         </svg>
+                        <span class="block lg:hidden text-[10px] mt-1 font-medium tracking-wide">
+                            {item.label}
+                        </span>
                         <span class="hidden lg:block ml-3 font-medium tracking-wide">
                             {item.label}
                         </span>
