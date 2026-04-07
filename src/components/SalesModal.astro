@@ -273,27 +273,31 @@
         if (!itemsContainer) return;
 
         const row = document.createElement("div");
-        row.className = "grid grid-cols-12 gap-2 items-end mb-2 sale-item-row";
+        row.className = "grid grid-cols-1 md:grid-cols-12 gap-2 items-end mb-4 md:mb-2 pb-4 md:pb-0 border-b border-white/5 md:border-0 sale-item-row";
         row.innerHTML = `
-            <div class="col-span-5">
-                <label class="block text-xs text-slate-500 mb-1">Producto</label>
-                <select name="product[]" class="product-select w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500">
-                    <option value="">Seleccionar</option>
-                </select>
+            <div class="md:col-span-11 grid grid-cols-1 md:grid-cols-11 gap-2">
+                <div class="md:col-span-5">
+                    <label class="block text-xs text-slate-500 mb-1">Producto</label>
+                    <select name="product[]" class="product-select w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500">
+                        <option value="">Seleccionar</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-3 gap-2 md:contents">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs text-slate-500 mb-1">Uds</label>
+                        <input type="number" name="units[]" class="units-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" placeholder="1" min="0.01" step="0.01" value="${data ? data.unidades : ""}">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs text-slate-500 mb-1">Precio</label>
+                        <input type="number" name="price[]" step="0.01" class="price-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" placeholder="0.00" value="${data ? data.precio_unitario_venta : ""}">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs text-slate-500 mb-1">IVA %</label>
+                        <input type="number" name="tax[]" class="tax-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" value="${data ? data.porcentaje_iva : "21"}">
+                    </div>
+                </div>
             </div>
-            <div class="col-span-2">
-                <label class="block text-xs text-slate-500 mb-1">Uds</label>
-                <input type="number" name="units[]" class="units-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" placeholder="1" min="0.01" step="0.01" value="${data ? data.unidades : ""}">
-            </div>
-            <div class="col-span-2">
-                <label class="block text-xs text-slate-500 mb-1">Precio</label>
-                <input type="number" name="price[]" step="0.01" class="price-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" placeholder="0.00" value="${data ? data.precio_unitario_venta : ""}">
-            </div>
-            <div class="col-span-2">
-                <label class="block text-xs text-slate-500 mb-1">IVA %</label>
-                <input type="number" name="tax[]" class="tax-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" value="${data ? data.porcentaje_iva : "21"}">
-            </div>
-            <div class="col-span-1 flex justify-end pb-2">
+            <div class="md:col-span-1 flex justify-end pb-2">
                 <button type="button" class="remove-item text-red-400 hover:text-red-300">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
