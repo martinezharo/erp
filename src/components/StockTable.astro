@@ -1,11 +1,13 @@
 ---
 import type { VistaStockFinal } from "../types/database";
+import { getProductNameKey } from "../lib/mock-data";
 
 interface Props {
     data: VistaStockFinal[];
 }
 
 const { data: rawData } = Astro.props;
+const { t, locale } = Astro.locals;
 
 // 1. Sort alphabetically by default
 const data = [...rawData].sort((a, b) => 
@@ -18,14 +20,14 @@ const totalUnits = data.reduce((acc, item) => acc + item.stock_actual, 0);
 const totalValue = data.reduce((acc, item) => acc + item.valor_stock, 0);
 
 const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-ES", {
+    return new Intl.NumberFormat(locale, {
         style: "currency",
         currency: "EUR",
     }).format(value);
 };
 
 const formatNumber = (value: number) => {
-    return new Intl.NumberFormat("es-ES").format(value);
+    return new Intl.NumberFormat(locale).format(value);
 };
 ---
 
@@ -34,7 +36,7 @@ const formatNumber = (value: number) => {
     <div class="p-6 rounded-2xl border border-white/5 bg-[#14151a]/50 backdrop-blur-xl shadow-lg relative overflow-hidden group">
         <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         <div class="relative z-10">
-            <p class="text-sm font-medium text-slate-400 mb-1">Total Productos</p>
+            <p class="text-sm font-medium text-slate-400 mb-1">{t("stock.totalProducts")}</p>
             <p class="text-3xl font-bold text-white tracking-tight">{formatNumber(totalProducts)}</p>
         </div>
     </div>
@@ -42,7 +44,7 @@ const formatNumber = (value: number) => {
     <div class="p-6 rounded-2xl border border-white/5 bg-[#14151a]/50 backdrop-blur-xl shadow-lg relative overflow-hidden group">
         <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         <div class="relative z-10">
-            <p class="text-sm font-medium text-slate-400 mb-1">Unidades en Stock</p>
+            <p class="text-sm font-medium text-slate-400 mb-1">{t("stock.unitsInStock")}</p>
             <p class="text-3xl font-bold text-white tracking-tight">{formatNumber(totalUnits)}</p>
         </div>
     </div>
@@ -50,7 +52,7 @@ const formatNumber = (value: number) => {
     <div class="p-6 rounded-2xl border border-white/5 bg-[#14151a]/50 backdrop-blur-xl shadow-lg relative overflow-hidden group">
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         <div class="relative z-10">
-            <p class="text-sm font-medium text-slate-400 mb-1">Valor Total Stock</p>
+            <p class="text-sm font-medium text-slate-400 mb-1">{t("stock.totalValue")}</p>
             <p class="text-3xl font-bold text-emerald-400 tracking-tight">{formatCurrency(totalValue)}</p>
         </div>
     </div>
@@ -93,9 +95,9 @@ const formatNumber = (value: number) => {
         function sortTable(column: string, direction: string) {
             if (!tableBody) return;
             const rows = Array.from(tableBody.querySelectorAll('tr'));
-            
-            // If no data rows (empty state), don't sort
-            if (rows.length === 1 && rows[0].innerText.includes('No hay datos')) return;
+
+            // If no data rows (empty state row has no data-val cells), don't sort
+            if (rows.length === 1 && !rows[0].querySelector('td[data-val]')) return;
 
             const sortedRows = rows.sort((a, b) => {
                 // Find the cell corresponding to the column
@@ -170,7 +172,7 @@ const formatNumber = (value: number) => {
                         data-sort="name"
                     >
                         <div class="flex items-center gap-2">
-                            Producto
+                            {t("stock.colProduct")}
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100 data-[active=true]:opacity-100 data-[active=true]:text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
                         </div>
                     </th>
@@ -180,7 +182,7 @@ const formatNumber = (value: number) => {
                         data-sort="stock"
                     >
                         <div class="flex items-center justify-end gap-2">
-                            Stock
+                            {t("stock.colStock")}
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
                         </div>
                     </th>
@@ -190,12 +192,12 @@ const formatNumber = (value: number) => {
                         data-sort="value"
                     >
                         <div class="flex items-center justify-end gap-2">
-                            Valor Stock
+                            {t("stock.colValue")}
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
                         </div>
                     </th>
                     <th scope="col" class="px-6 py-4 text-right"
-                        >Unitario (C/V)</th
+                        >{t("stock.colUnit")}</th
                     >
                     <th
                         scope="col"
@@ -203,7 +205,7 @@ const formatNumber = (value: number) => {
                         data-sort="profit_u"
                     >
                         <div class="flex items-center justify-end gap-2">
-                            Beneficio U.
+                            {t("stock.colProfitU")}
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
                         </div>
                     </th>
@@ -213,7 +215,7 @@ const formatNumber = (value: number) => {
                         data-sort="profit_30d"
                     >
                         <div class="flex items-center justify-end gap-2">
-                            Beneficio 30d
+                            {t("stock.colProfit30")}
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
                         </div>
                     </th>
@@ -223,7 +225,7 @@ const formatNumber = (value: number) => {
                         data-sort="status"
                     >
                         <div class="flex items-center justify-center gap-2">
-                            Estado
+                            {t("stock.colStatus")}
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600 group-hover/th:text-slate-400 transition-colors opacity-0 group-hover/th:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
                         </div>
                     </th>
@@ -237,7 +239,7 @@ const formatNumber = (value: number) => {
                                 colspan="7"
                                 class="px-6 py-12 text-center text-slate-500 italic"
                             >
-                                No hay datos de stock para este proyecto.
+                                {t("stock.noData")}
                             </td>
                         </tr>
                     ) : (
@@ -252,7 +254,7 @@ const formatNumber = (value: number) => {
                                 sortValueState = -1; // Agotado first (or last depending on sort)
                                 statusBadge = (
                                     <span class="inline-flex items-center rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-500 ring-1 ring-inset ring-red-500/20">
-                                        Agotado
+                                        {t("stock.outOfStock")}
                                     </span>
                                 );
                             } else if (
@@ -262,21 +264,21 @@ const formatNumber = (value: number) => {
                                 sortValueState = 999999; // Unknown at the end
                                 statusBadge = (
                                     <span class="inline-flex items-center rounded-full bg-slate-500/10 px-2.5 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-500/20">
-                                        Sin datos
+                                        {t("stock.noStatus")}
                                     </span>
                                 );
                             } else if (daysRemaining < 7) {
                                 sortValueState = daysRemaining;
                                 statusBadge = (
                                     <span class="inline-flex items-center rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-500 ring-1 ring-inset ring-red-500/20">
-                                        {Math.round(daysRemaining)} días
+                                        {t("stock.days", { n: Math.round(daysRemaining) })}
                                     </span>
                                 );
                             } else if (daysRemaining < 30) {
                                 sortValueState = daysRemaining;
                                 statusBadge = (
                                     <span class="inline-flex items-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-500 ring-1 ring-inset ring-yellow-500/20">
-                                        {Math.round(daysRemaining)} días
+                                        {t("stock.days", { n: Math.round(daysRemaining) })}
                                     </span>
                                 );
                             } else {
@@ -284,8 +286,8 @@ const formatNumber = (value: number) => {
                                 statusBadge = (
                                     <span class="inline-flex items-center rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-500 ring-1 ring-inset ring-green-500/20">
                                         {daysRemaining > 365
-                                            ? "+1 año"
-                                            : `${Math.round(daysRemaining)} días`}
+                                            ? t("stock.overYear")
+                                            : t("stock.days", { n: Math.round(daysRemaining) })}
                                     </span>
                                 );
                             }
@@ -294,10 +296,10 @@ const formatNumber = (value: number) => {
                                 <tr class="hover:bg-white/5 transition-colors group">
                                     <td class="px-6 py-4 font-medium text-white" data-val={item.nombre_producto}>
                                         <button 
-                                            onclick={`openProductHistory(${item.producto_id}, '${item.nombre_producto.replace(/'/g, "\\'")}')`}
+                                            onclick={`openProductHistory(${item.producto_id}, '${getProductNameKey(item.nombre_producto).replace(/'/g, "\\'")}')`}
                                             class="hover:text-primary-400 hover:underline transition-colors text-left"
                                         >
-                                            {item.nombre_producto}
+                                            {t(getProductNameKey(item.nombre_producto))}
                                         </button>
                                     </td>
                                     <td class="px-6 py-4 text-right font-mono text-slate-200" data-val={item.stock_actual}>
@@ -309,11 +311,11 @@ const formatNumber = (value: number) => {
                                     <td class="px-6 py-4 text-right font-mono">
                                         <div class="flex flex-col items-end gap-0.5">
                                             <span class="text-xs text-slate-500">
-                                                C:{" "}
+                                                {t("stock.buyLabel")}{" "}
                                                 {formatCurrency(item.coste_ud)}
                                             </span>
                                             <span class="text-slate-300">
-                                                V:{" "}
+                                                {t("stock.sellLabel")}{" "}
                                                 {formatCurrency(item.venta_ud)}
                                             </span>
                                         </div>

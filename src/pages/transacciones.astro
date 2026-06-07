@@ -9,6 +9,8 @@ import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
 import { mockFinanzas, mockProjects } from "../lib/mock-data";
 import type { VistaFinanzasDiarias } from "../types/database";
 
+const { t } = Astro.locals;
+
 let data: VistaFinanzasDiarias[] = [];
 let errorMsg = "";
 
@@ -78,7 +80,7 @@ if (isDemoMode) {
 }
 ---
 
-<Layout title="OlivERP | Transacciones">
+<Layout title={t("title.transactions")}>
     {
         isDemoMode && (
             <div class="mb-6 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3">
@@ -97,7 +99,7 @@ if (isDemoMode) {
                     />
                 </svg>
                 <span>
-                    <strong>Modo Demo</strong> — Datos de ejemplo.
+                    <strong>{t("demo.title")}</strong> — {t("demo.short")}
                 </span>
             </div>
         )
@@ -108,32 +110,32 @@ if (isDemoMode) {
             <h1
                 class="text-2xl lg:text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-white to-slate-400"
             >
-                Transacciones
+                {t("transactions.title")}
             </h1>
             <p class="text-slate-400 mt-1 text-sm lg:text-base">
-                Finanzas diarias, ingresos y gastos
+                {t("transactions.subtitle")}
             </p>
         </div>
         <div class="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 gap-1 shrink-0">
             <button
                 id="btn-view-daily"
                 class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-white/10 text-white"
-                title="Modo diario"
+                title={t("transactions.viewDaily")}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
                 </svg>
-                <span class="hidden sm:inline">Diario</span>
+                <span class="hidden sm:inline">{t("transactions.daily")}</span>
             </button>
             <button
                 id="btn-view-list"
                 class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white"
-                title="Modo transacciones"
+                title={t("transactions.viewList")}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
                 </svg>
-                <span class="hidden sm:inline">Transacciones</span>
+                <span class="hidden sm:inline">{t("transactions.list")}</span>
             </button>
         </div>
     </div>
@@ -141,7 +143,7 @@ if (isDemoMode) {
     {
         errorMsg && (
             <div class="p-4 mb-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
-                Error cargando datos: {errorMsg}
+                {t("common.errorLoadingData")}: {errorMsg}
             </div>
         )
     }

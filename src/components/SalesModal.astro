@@ -1,3 +1,7 @@
+---
+const { t } = Astro.locals;
+---
+
 <dialog
     id="modal-venta"
     class="bg-transparent m-auto backdrop:bg-black/80 backdrop:backdrop-blur-sm w-full max-w-4xl p-0 open:animate-fade-in relative z-50"
@@ -24,7 +28,7 @@
                     <circle cx="19" cy="21" r="1" />
                     <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
                 </svg>
-                Nueva Venta
+                {t("modal.sale.title")}
             </h3>
             <button
                 onclick="document.getElementById('modal-venta').close()"
@@ -52,7 +56,7 @@
                 <div>
                     <label
                         class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
-                        >Fecha</label
+                        >{t("txn.colDate")}</label
                     >
                     <input
                         type="date"
@@ -64,7 +68,7 @@
                 <div>
                     <label
                         class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
-                        >Canal</label
+                        >{t("modal.sale.channel")}</label
                     >
                     <select
                         id="sale-channel"
@@ -72,13 +76,13 @@
                         required
                         class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-all"
                     >
-                        <option value="">Cargando...</option>
+                        <option value="">{t("common.loading")}</option>
                     </select>
                 </div>
                 <div>
                     <label
                         class="block text-xs font-medium text-indigo-300 uppercase tracking-wider mb-2"
-                        >Importe Total (Opcional)</label
+                        >{t("common.totalAmountOptional")}</label
                     >
                     <div class="relative">
                         <input
@@ -95,7 +99,7 @@
                         </div>
                     </div>
                     <p class="text-[10px] text-slate-500 mt-1">
-                        Autocompleta precios unitarios
+                        {t("modal.sale.autofill")}
                     </p>
                 </div>
             </div>
@@ -106,7 +110,7 @@
                     <h4
                         class="text-sm font-bold text-white uppercase tracking-wider"
                     >
-                        Productos
+                        {t("common.products")}
                     </h4>
                     <button
                         type="button"
@@ -126,7 +130,7 @@
                                 stroke-width="2"
                                 d="M12 4v16m8-8H4"></path>
                         </svg>
-                        Añadir Producto
+                        {t("common.addProduct")}
                     </button>
                 </div>
 
@@ -144,13 +148,13 @@
                     onclick="document.getElementById('modal-venta').close()"
                     class="px-6 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
                 >
-                    Cancelar
+                    {t("common.cancel")}
                 </button>
                 <button
                     type="submit"
                     class="px-6 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/20 transition-all"
                 >
-                    Guardar Venta
+                    {t("modal.sale.save")}
                 </button>
             </div>
         </form>
@@ -196,6 +200,7 @@
 
 <script>
     import { currentProject } from "../stores/projectStore";
+    import { t } from "../i18n/client";
 
     interface Product {
         id: number;
@@ -235,7 +240,7 @@
             ) as HTMLSelectElement;
             if (channelSelect) {
                 channelSelect.innerHTML =
-                    '<option value="">Seleccionar canal</option>';
+                    `<option value="">${t("modal.sale.selectChannel")}</option>`;
                 channels.forEach((channel: string) => {
                     const option = document.createElement("option");
                     option.value = channel;
@@ -277,22 +282,22 @@
         row.innerHTML = `
             <div class="md:col-span-11 grid grid-cols-1 md:grid-cols-11 gap-2">
                 <div class="md:col-span-5">
-                    <label class="block text-xs text-slate-500 mb-1">Producto</label>
+                    <label class="block text-xs text-slate-500 mb-1">${t("item.product")}</label>
                     <select name="product[]" class="product-select w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500">
-                        <option value="">Seleccionar</option>
+                        <option value="">${t("common.select")}</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-3 gap-2 md:contents">
                     <div class="md:col-span-2">
-                        <label class="block text-xs text-slate-500 mb-1">Uds</label>
+                        <label class="block text-xs text-slate-500 mb-1">${t("item.units")}</label>
                         <input type="number" name="units[]" class="units-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" placeholder="1" min="0.01" step="0.01" value="${data ? data.unidades : ""}">
                     </div>
                     <div class="md:col-span-2">
-                        <label class="block text-xs text-slate-500 mb-1">Precio</label>
+                        <label class="block text-xs text-slate-500 mb-1">${t("item.price")}</label>
                         <input type="number" name="price[]" step="0.01" class="price-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" placeholder="0.00" value="${data ? data.precio_unitario_venta : ""}">
                     </div>
                     <div class="md:col-span-2">
-                        <label class="block text-xs text-slate-500 mb-1">IVA %</label>
+                        <label class="block text-xs text-slate-500 mb-1">${t("item.vat")}</label>
                         <input type="number" name="tax[]" class="tax-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" value="${data ? data.porcentaje_iva : "21"}">
                     </div>
                 </div>
@@ -428,7 +433,7 @@
             e.preventDefault();
 
             if (!activeProjectId) {
-                alert("Selecciona un proyecto primero");
+                alert(t("common.noProjectFirst"));
                 return;
             }
 
@@ -482,24 +487,24 @@
                 if (res.ok) {
                     alert(
                         isEdit
-                            ? "Venta actualizada correctamente"
-                            : "Venta guardada correctamente",
+                            ? t("modal.sale.updated")
+                            : t("modal.sale.created"),
                     );
                     formVenta.reset();
                     delete formVenta.dataset.editingId;
                     const title = modalVenta.querySelector("h3");
-                    if (title) title.textContent = "Nueva Venta";
+                    if (title) title.textContent = t("modal.sale.title");
 
                     if (itemsContainer) itemsContainer.innerHTML = "";
                     modalVenta.close();
                     window.location.reload();
                 } else {
                     const err = await res.json();
-                    alert("Error al guardar: " + (err.error || "Desconocido"));
+                    alert(t("common.saveErrorPrefix") + " " + (err.error || t("common.unknown")));
                 }
             } catch (e) {
                 console.error(e);
-                alert("Error de conexión");
+                alert(t("common.connectionError"));
             }
         });
 
@@ -514,7 +519,7 @@
                     // Set editing state
                     formVenta.dataset.editingId = sale.id.toString();
                     const title = modalVenta.querySelector("h3");
-                    if (title) title.textContent = `Editar Venta #${sale.id}`;
+                    if (title) title.textContent = t("modal.sale.editTitle", { id: sale.id });
 
                     // Fill fields
                     const dateInput = formVenta.querySelector(
@@ -554,7 +559,7 @@
                 }
             } catch (e) {
                 console.error(e);
-                alert("Error al cargar la venta");
+                alert(t("modal.sale.loadError"));
             }
         };
     });

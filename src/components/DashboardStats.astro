@@ -7,6 +7,7 @@ interface Props {
 }
 
 const { projectId } = Astro.props;
+const { t, locale } = Astro.locals;
 
 // Fechas clave
 const now = new Date();
@@ -99,7 +100,7 @@ stats.prediction.urp = stats.month.urp * projectionFactor;
 
 // Formatter
 const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("es-ES", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 2,
@@ -107,16 +108,18 @@ const formatCurrency = (value: number) => {
 };
 
 const formatNumber = (value: number) => {
-  return new Intl.NumberFormat("es-ES", {
+  return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 0,
   }).format(value);
 };
 
 // Nombres de meses para display
-const monthName = new Intl.DateTimeFormat("es-ES", { month: "long" }).format(
+const monthName = new Intl.DateTimeFormat(locale, { month: "long" }).format(
   now
 );
-const quarterName = `T${Math.floor(currentMonth / 3) + 1}`;
+const quarterName = t("dashboard.quarterShort", {
+  n: Math.floor(currentMonth / 3) + 1,
+});
 ---
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -151,24 +154,24 @@ const quarterName = `T${Math.floor(currentMonth / 3) + 1}`;
         class="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4 flex items-center gap-2"
       >
         <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-        Balance {monthName}
+        {t("dashboard.balanceMonth", { month: monthName })}
       </h3>
 
       <div class="grid grid-cols-2 gap-y-4 gap-x-2">
         <div>
-          <p class="text-xs text-slate-500 mb-1">Ingresos</p>
+          <p class="text-xs text-slate-500 mb-1">{t("finance.income")}</p>
           <p class="text-lg font-bold text-emerald-400">
             {formatCurrency(stats.month.ingresos)}
           </p>
         </div>
         <div>
-          <p class="text-xs text-slate-500 mb-1">Gastos</p>
+          <p class="text-xs text-slate-500 mb-1">{t("finance.expenses")}</p>
           <p class="text-lg font-bold text-red-400">
             {formatCurrency(stats.month.gastos)}
           </p>
         </div>
         <div>
-          <p class="text-xs text-slate-500 mb-1">Balance</p>
+          <p class="text-xs text-slate-500 mb-1">{t("finance.balance")}</p>
           <p
             class={`text-lg font-bold ${
               stats.month.balance >= 0 ? "text-white" : "text-red-400"
@@ -178,7 +181,7 @@ const quarterName = `T${Math.floor(currentMonth / 3) + 1}`;
           </p>
         </div>
         <div>
-          <p class="text-xs text-slate-500 mb-1">URP</p>
+          <p class="text-xs text-slate-500 mb-1">{t("finance.urp")}</p>
           <p
             class={`text-lg font-bold ${
               stats.month.urp >= 0 ? "text-blue-400" : "text-red-400"
@@ -220,24 +223,24 @@ const quarterName = `T${Math.floor(currentMonth / 3) + 1}`;
         class="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4 flex items-center gap-2"
       >
         <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-        Balance Trimestre {quarterName}
+        {t("dashboard.balanceQuarter", { quarter: quarterName })}
       </h3>
 
       <div class="grid grid-cols-2 gap-y-4 gap-x-2">
         <div>
-          <p class="text-xs text-slate-500 mb-1">Ingresos</p>
+          <p class="text-xs text-slate-500 mb-1">{t("finance.income")}</p>
           <p class="text-lg font-bold text-emerald-400">
             {formatCurrency(stats.quarter.ingresos)}
           </p>
         </div>
         <div>
-          <p class="text-xs text-slate-500 mb-1">Gastos</p>
+          <p class="text-xs text-slate-500 mb-1">{t("finance.expenses")}</p>
           <p class="text-lg font-bold text-red-400">
             {formatCurrency(stats.quarter.gastos)}
           </p>
         </div>
         <div class="col-span-2">
-          <p class="text-xs text-slate-500 mb-1">Balance</p>
+          <p class="text-xs text-slate-500 mb-1">{t("finance.balance")}</p>
           <p
             class={`text-lg font-bold ${
               stats.quarter.balance >= 0 ? "text-white" : "text-red-400"
@@ -249,12 +252,12 @@ const quarterName = `T${Math.floor(currentMonth / 3) + 1}`;
 
         <div class="col-span-2 pt-2 border-t border-white/5 mt-2">
           <div class="flex justify-between items-end mb-1">
-            <p class="text-xs text-slate-500">Saldo IVA</p>
+            <p class="text-xs text-slate-500">{t("finance.vatBalance")}</p>
             <div class="text-xs text-slate-600 flex gap-2">
-              <span title="Soportado (IVA deducible en compras)" class="text-emerald-400/60"
+              <span title={t("dashboard.vatSupportedTip")} class="text-emerald-400/60"
                 >S: {formatNumber(stats.quarter.iva_soportado)}€</span
               >
-              <span title="Repercutido (IVA cobrado en ventas)" class="text-red-400/60"
+              <span title={t("dashboard.vatChargedTip")} class="text-red-400/60"
                 >R: {formatNumber(stats.quarter.iva_repercutido)}€</span
               >
             </div>
@@ -304,17 +307,17 @@ const quarterName = `T${Math.floor(currentMonth / 3) + 1}`;
         class="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4 flex items-center gap-2"
       >
         <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-        Proyección {monthName}
+        {t("dashboard.projection", { month: monthName })}
       </h3>
 
       <div class="space-y-6">
         <div>
           <div class="flex justify-between items-baseline mb-1">
-            <p class="text-xs text-slate-500">Ingresos Estimados</p>
+            <p class="text-xs text-slate-500">{t("dashboard.estimatedIncome")}</p>
             <span
               class="text-[10px] text-amber-500/60 bg-amber-500/10 px-1.5 py-0.5 rounded"
             >
-              Día {currentDay}/{daysInMonth}
+              {t("dashboard.day", { current: currentDay, total: daysInMonth })}
             </span>
           </div>
           <p class="text-2xl font-bold text-white">
@@ -335,7 +338,7 @@ const quarterName = `T${Math.floor(currentMonth / 3) + 1}`;
         </div>
 
         <div>
-          <p class="text-xs text-slate-500 mb-1">URP Estimado</p>
+          <p class="text-xs text-slate-500 mb-1">{t("dashboard.estimatedUrp")}</p>
           <p class="text-2xl font-bold text-blue-400">
             {formatCurrency(stats.prediction.urp)}
           </p>

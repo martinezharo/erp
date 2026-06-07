@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar.astro";
 import ProjectSelector from "../components/ProjectSelector.astro";
 import { ClientRouter } from "astro:transitions";
 import { isDemoMode } from "../lib/supabase";
+import { ui } from "../i18n/ui";
 
 interface Props {
 	title: string;
@@ -12,10 +13,11 @@ interface Props {
 
 const { title, description = "OlivERP - Management System" } = Astro.props;
 const currentPath = Astro.url.pathname;
+const { lang, locale, t } = Astro.locals;
 ---
 
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang={lang} class="dark">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width" />
@@ -29,6 +31,11 @@ const currentPath = Astro.url.pathname;
 			href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
 			rel="stylesheet"
 		/>
+		<script is:inline define:vars={{ lang, locale, dict: ui[lang] }}>
+			window.__LANG__ = lang;
+			window.__LOCALE__ = locale;
+			window.__I18N__ = dict;
+		</script>
 		<ClientRouter />
 		<style>
 			body {
@@ -58,7 +65,7 @@ const currentPath = Astro.url.pathname;
 						<h2
 							class="text-xs font-bold text-slate-500 uppercase tracking-widest hidden md:block"
 						>
-							{title.split("|")[1]?.trim() || "Dashboard"}
+							{title.split("|")[1]?.trim() || t("layout.dashboard")}
 						</h2>
 					</div>
 
@@ -73,7 +80,7 @@ const currentPath = Astro.url.pathname;
 									<button
 										type="submit"
 										class="w-10 h-10 rounded-full bg-white/5 hover:bg-red-500/20 flex items-center justify-center transition-colors relative group"
-										title="Cerrar Sesión"
+										title={t("layout.signOut")}
 									>
 										<svg
 											xmlns="http://www.w3.org/2000/svg"

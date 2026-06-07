@@ -15,9 +15,11 @@ const refreshToken = cookies.get("sb-refresh-token");
 if (accessToken && refreshToken) {
     return Astro.redirect("/");
 }
+
+const { t } = Astro.locals;
 ---
 
-<Layout title="OlivERP | Iniciar Sesión">
+<Layout title={t("title.login")}>
     <div class="flex items-center justify-center min-h-[80vh]">
         <div
             class="w-full max-w-md p-8 rounded-2xl bg-[#14151a]/50 backdrop-blur-xl border border-white/5 shadow-2xl relative overflow-hidden group"
@@ -36,10 +38,10 @@ if (accessToken && refreshToken) {
                 <h1
                     class="text-3xl font-bold text-center mb-2 bg-clip-text text-transparent bg-linear-to-r from-white to-slate-400"
                 >
-                    Bienvenido
+                    {t("login.welcome")}
                 </h1>
                 <p class="text-center text-slate-400 mb-8 text-sm">
-                    Inicia sesión para acceder al ERP
+                    {t("login.subtitle")}
                 </p>
 
                 <form action="/api/auth/signin" method="post" class="space-y-6">
@@ -47,7 +49,7 @@ if (accessToken && refreshToken) {
                         <label
                             for="email"
                             class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
-                            >Email</label
+                            >{t("login.email")}</label
                         >
                         <input
                             type="email"
@@ -63,7 +65,7 @@ if (accessToken && refreshToken) {
                         <label
                             for="password"
                             class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
-                            >Contraseña</label
+                            >{t("login.password")}</label
                         >
                         <input
                             type="password"
@@ -79,7 +81,7 @@ if (accessToken && refreshToken) {
                         type="submit"
                         class="w-full py-3 rounded-lg bg-linear-to-r from-primary-500 to-indigo-600 text-white font-bold shadow-lg shadow-primary-500/20 hover:shadow-primary-500/40 hover:scale-[1.02] transition-all duration-200"
                     >
-                        Iniciar Sesión
+                        {t("login.signIn")}
                     </button>
                 </form>
 
@@ -88,7 +90,7 @@ if (accessToken && refreshToken) {
                         href="#"
                         class="text-xs text-slate-500 hover:text-white transition-colors"
                     >
-                        ¿Olvidaste tu contraseña?
+                        {t("login.forgot")}
                     </a>
                 </div>
             </div>

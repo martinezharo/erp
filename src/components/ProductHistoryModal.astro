@@ -1,3 +1,7 @@
+---
+const { t } = Astro.locals;
+---
+
 <dialog
     id="modal-historial"
     class="bg-transparent m-auto backdrop:bg-black/80 backdrop:backdrop-blur-sm w-full max-w-5xl p-0 open:animate-fade-in relative z-50"
@@ -24,7 +28,7 @@
                         <path d="M3 3v18h18" />
                         <path d="m19 9-5 5-4-4-3 3" />
                     </svg>
-                    Historial de Movimientos
+                    {t("modal.history.title")}
                 </h3>
                 <p id="modal-product-name" class="text-slate-400 text-sm mt-1"></p>
             </div>
@@ -53,13 +57,13 @@
             <div class="mb-8 p-4 rounded-xl bg-white/5 border border-white/5">
                 <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                    Añadir Ajuste Manual
+                    {t("modal.history.addManualAdjust")}
                 </h4>
                 <form id="form-ajuste" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <input type="hidden" name="productId" id="ajuste-product-id" />
                     
                     <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Fecha</label>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">{t("txn.colDate")}</label>
                         <input
                             type="date"
                             name="date"
@@ -69,12 +73,12 @@
                     </div>
                     
                     <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Unidades (+/-)</label>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">{t("modal.history.unitsPlusMinus")}</label>
                         <input
                             type="number"
                             name="units"
                             required
-                            placeholder="Ej: 5 o -2"
+                            placeholder={t("modal.history.unitsPlaceholderProduct")}
                             step="1"
                             class="w-full bg-[#14151a] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-all"
                         />
@@ -85,7 +89,7 @@
                             type="submit"
                             class="w-full px-4 py-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 font-medium text-sm transition-all flex items-center justify-center gap-2"
                         >
-                            Registrar Ajuste
+                            {t("modal.history.registerAdjust")}
                         </button>
                     </div>
                 </form>
@@ -96,17 +100,17 @@
                 <table class="w-full text-left text-sm text-slate-400">
                     <thead class="bg-white/5 text-xs uppercase font-semibold text-slate-200">
                         <tr>
-                            <th class="px-4 py-3">Fecha</th>
-                            <th class="px-4 py-3">Tipo</th>
-                            <th class="px-4 py-3 text-right">Unidades</th>
-                            <th class="px-4 py-3 text-right">Precio Unit.</th>
-                            <th class="px-4 py-3">Canal / Detalle</th>
+                            <th class="px-4 py-3">{t("modal.history.colDate")}</th>
+                            <th class="px-4 py-3">{t("modal.history.colType")}</th>
+                            <th class="px-4 py-3 text-right">{t("modal.history.colUnits")}</th>
+                            <th class="px-4 py-3 text-right">{t("modal.history.colPrice")}</th>
+                            <th class="px-4 py-3">{t("modal.history.colChannel")}</th>
                         </tr>
                     </thead>
                     <tbody id="movements-table-body" class="divide-y divide-white/5">
                         <!-- Content populated by JS -->
                         <tr>
-                            <td colspan="5" class="px-4 py-8 text-center italic">Cargando historial...</td>
+                            <td colspan="5" class="px-4 py-8 text-center italic">{t("modal.history.loading")}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -116,6 +120,8 @@
 </dialog>
 
 <script>
+    import { t, locale } from '../i18n/client';
+
     document.addEventListener('astro:page-load', () => {
         const modal = document.getElementById('modal-historial') as HTMLDialogElement;
         const productNameEl = document.getElementById('modal-product-name');
@@ -127,9 +133,9 @@
         (window as any).openProductHistory = async (productId: number, productName: string) => {
             if (!modal || !productNameEl || !tableBody || !productIdInput) return;
             
-            productNameEl.textContent = productName;
+            productNameEl.textContent = t(productName);
             productIdInput.value = productId.toString();
-            tableBody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center italic">Cargando historial...</td></tr>';
+            tableBody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center italic">${t('modal.history.loading')}</td></tr>`;
             
             // Reset form date to today
             const dateInput = adjustForm.querySelector('input[type="date"]') as HTMLInputElement;
@@ -148,7 +154,7 @@
                 }
             } catch (error) {
                 console.error("Error fetching history:", error);
-                tableBody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-red-400">Error al cargar historial</td></tr>';
+                tableBody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-red-400">${t('modal.history.loadError')}</td></tr>`;
             }
         };
 
@@ -195,7 +201,7 @@
                     }
                 } catch (error) {
                     console.error("Error saving adjustment:", error);
-                    alert("Error al guardar el ajuste");
+                    alert(t("modal.history.saveAdjustError"));
                 }
             });
         }
@@ -204,7 +210,7 @@
             if (!tableBody) return;
             
             if (movements.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No hay movimientos registrados.</td></tr>';
+                tableBody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">${t('modal.history.noMovementsDot')}</td></tr>`;
                 return;
             }
 
@@ -213,18 +219,22 @@
                 const typeClass = m.tipo === 'venta' ? 'text-blue-400' : 
                                  m.tipo === 'compra' ? 'text-emerald-400' : 'text-slate-200';
                 
-                const formattedDate = new Date(m.fecha).toLocaleDateString('es-ES', {
+                const formattedDate = new Date(m.fecha).toLocaleDateString(locale, {
                     year: 'numeric', month: 'short', day: 'numeric'
                 });
 
-                const formattedPrice = m.precio !== null 
-                    ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(m.precio)
+                const formattedPrice = m.precio !== null
+                    ? new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(m.precio)
                     : '-';
+
+                const typeKey = 'movementType.' + m.tipo;
+                let typeLabel = t(typeKey);
+                if (typeLabel === typeKey) typeLabel = m.tipo.replace('_', ' ');
 
                 return `
                     <tr class="hover:bg-white/5 transition-colors">
                         <td class="px-4 py-3 text-slate-300">${formattedDate}</td>
-                        <td class="px-4 py-3 font-medium ${typeClass} capitalize">${m.tipo.replace('_', ' ')}</td>
+                        <td class="px-4 py-3 font-medium ${typeClass} capitalize">${typeLabel}</td>
                         <td class="px-4 py-3 text-right font-mono ${isPositive ? 'text-emerald-400' : 'text-red-400'}">
                             ${isPositive ? '+' : ''}${m.unidades}
                         </td>

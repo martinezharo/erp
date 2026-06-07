@@ -4,6 +4,7 @@ interface Props {
 }
 
 const { projectId } = Astro.props;
+const { t } = Astro.locals;
 ---
 
 <div class="rounded-3xl bg-[#14151a] border border-white/5 p-6 mb-8 relative group">
@@ -16,9 +17,9 @@ const { projectId } = Astro.props;
         </svg>
       </div>
       <div>
-        <h3 class="text-white font-bold text-lg">Evolución de Ingresos</h3>
+        <h3 class="text-white font-bold text-lg">{t("chart.title")}</h3>
         <div class="flex items-center gap-2">
-          <p class="text-slate-400 text-xs">Total del periodo:</p>
+          <p class="text-slate-400 text-xs">{t("chart.totalPeriod")}</p>
           <span id="total-revenue" class="text-emerald-400 text-xs font-bold">0,00€</span>
         </div>
       </div>
@@ -29,20 +30,20 @@ const { projectId } = Astro.props;
         class="period-btn px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-white transition-all data-[active=true]:bg-white/10 data-[active=true]:text-white data-[active=true]:shadow-sm"
         data-days="7"
       >
-        7 días
+        {t("chart.days7")}
       </button>
       <button
         class="period-btn px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-white transition-all data-[active=true]:bg-white/10 data-[active=true]:text-white data-[active=true]:shadow-sm"
         data-days="30"
         data-active="true"
       >
-        30 días
+        {t("chart.days30")}
       </button>
       <button
         class="period-btn px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-white transition-all data-[active=true]:bg-white/10 data-[active=true]:text-white data-[active=true]:shadow-sm"
         data-days="90"
       >
-        90 días
+        {t("chart.days90")}
       </button>
     </div>
   </div>
@@ -55,7 +56,7 @@ const { projectId } = Astro.props;
     <div id="chart-loader" class="absolute inset-0 flex items-center justify-center bg-[#14151a]/50 backdrop-blur-sm z-10 transition-opacity duration-300">
       <div class="flex flex-col items-center gap-2">
         <div class="w-6 h-6 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-        <span class="text-xs text-slate-400">Cargando datos...</span>
+        <span class="text-xs text-slate-400">{t("common.loadingData")}</span>
       </div>
     </div>
   </div>
@@ -63,6 +64,7 @@ const { projectId } = Astro.props;
 
 <script>
   import Chart from 'chart.js/auto';
+  import { t, locale } from '../i18n/client';
 
   let chartInstance: Chart | null = null;
 
@@ -112,7 +114,7 @@ const { projectId } = Astro.props;
 
     const labels = data.map((d: any) => {
         const date = new Date(d.date);
-        return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        return date.toLocaleDateString(locale, { day: '2-digit', month: 'short' });
     });
     
     const ingresos = data.map((d: any) => d.ingresos);
@@ -121,7 +123,7 @@ const { projectId } = Astro.props;
     const total = ingresos.reduce((sum: number, val: number) => sum + val, 0);
     const totalElement = document.getElementById('total-revenue');
     if (totalElement) {
-      totalElement.textContent = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(total);
+      totalElement.textContent = new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(total);
     }
 
     // Create gradients
@@ -135,7 +137,7 @@ const { projectId } = Astro.props;
         labels: labels,
         datasets: [
           {
-            label: 'Ingresos',
+            label: t('finance.income'),
             data: ingresos,
             borderColor: '#10b981', // Emerald 500
             backgroundColor: gradientIngresos,
@@ -176,7 +178,7 @@ const { projectId } = Astro.props;
                   label += ': ';
                 }
                 if (context.parsed.y !== null) {
-                  label += new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(context.parsed.y);
+                  label += new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(context.parsed.y);
                 }
                 return label;
               }
@@ -209,7 +211,7 @@ const { projectId } = Astro.props;
             ticks: {
               color: '#64748b',
               callback: function(value: any) {
-                return new Intl.NumberFormat('es-ES', { notation: "compact", compactDisplay: "short" }).format(value) + '€';
+                return new Intl.NumberFormat(locale, { notation: "compact", compactDisplay: "short" }).format(value) + '€';
               }
             }
           }

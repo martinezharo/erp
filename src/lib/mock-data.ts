@@ -9,6 +9,28 @@ import type {
     VistaStockFinal,
 } from "../types/database";
 
+// ── Translation keys for mock product/project names ───────
+export const productNameTranslationKeys: Record<string, string> = {
+    "Mando Samsung BN59": "product.mando_samsung_bn59",
+    "Mando LG AKB75095308": "product.mando_lg_akb75095308",
+    "Mando Sony RMT-TX300E": "product.mando_sony_rmt_tx300e",
+    "Mando Fire TV Stick": "product.mando_fire_tv_stick",
+    "Mando Xiaomi Mi Box": "product.mando_xiaomi_mi_box",
+};
+
+export const projectNameTranslationKeys: Record<string, string> = {
+    "Octopus Control": "project.octopus_control",
+    "Demo Store": "project.demo_store",
+};
+
+export function getProductNameKey(name: string): string {
+    return productNameTranslationKeys[name] || name;
+}
+
+export function getProjectNameKey(name: string): string {
+    return projectNameTranslationKeys[name] || name;
+}
+
 // ── Projects ──────────────────────────────────────────────
 export const mockProjects: Proyecto[] = [
     { id: 1, nombre: "Octopus Control", activo: true },

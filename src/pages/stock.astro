@@ -7,6 +7,8 @@ import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
 import { mockStock, mockProjects } from "../lib/mock-data";
 import type { VistaStockFinal } from "../types/database";
 
+const { t } = Astro.locals;
+
 let data: VistaStockFinal[] = [];
 let errorMsg = "";
 
@@ -53,7 +55,7 @@ if (isDemoMode) {
 }
 ---
 
-<Layout title="OlivERP | Stock">
+<Layout title={t("title.stock")}>
     {
         isDemoMode && (
             <div class="mb-6 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3">
@@ -72,7 +74,7 @@ if (isDemoMode) {
                     />
                 </svg>
                 <span>
-                    <strong>Modo Demo</strong> — Datos de ejemplo.
+                    <strong>{t("demo.title")}</strong> — {t("demo.short")}
                 </span>
             </div>
         )
@@ -83,10 +85,10 @@ if (isDemoMode) {
             <h1
                 class="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-white to-slate-400"
             >
-                Inventario & Stock
+                {t("stock.title")}
             </h1>
             <p class="text-slate-400 mt-2">
-                Gestión de productos y valoración de existencias
+                {t("stock.subtitle")}
             </p>
         </div>
 
@@ -108,7 +110,7 @@ if (isDemoMode) {
                         stroke-width="2"
                         d="M12 4v16m8-8H4"></path>
                 </svg>
-                Nuevo Producto
+                {t("stock.newProduct")}
             </button>
         </div>
     </div>
@@ -116,7 +118,7 @@ if (isDemoMode) {
     {
         errorMsg && (
             <div class="p-4 mb-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
-                Error cargando datos: {errorMsg}
+                {t("common.errorLoadingData")}: {errorMsg}
             </div>
         )
     }

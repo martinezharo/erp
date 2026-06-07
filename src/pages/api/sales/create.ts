@@ -1,9 +1,9 @@
 import type { APIRoute } from "astro";
 import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies, locals }) => {
     if (isDemoMode) {
-        return new Response(JSON.stringify({ error: "No disponible en modo demo" }), { status: 403 });
+        return new Response(JSON.stringify({ error: locals.t("api.demoUnavailable") }), { status: 403 });
     }
 
     const supabase = getAuthenticatedSupabase(cookies);

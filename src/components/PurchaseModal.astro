@@ -1,3 +1,7 @@
+---
+const { t } = Astro.locals;
+---
+
 <dialog
     id="modal-compra"
     class="bg-transparent m-auto backdrop:bg-black/80 backdrop:backdrop-blur-sm w-full max-w-4xl p-0 open:animate-fade-in relative z-50"
@@ -25,7 +29,7 @@
                     <path d="m3 8 4-4 4 4" />
                     <path d="M7 4v16" />
                 </svg>
-                Nueva Compra
+                {t("modal.purchase.title")}
             </h3>
             <button
                 onclick="document.getElementById('modal-compra').close()"
@@ -53,7 +57,7 @@
                 <div>
                     <label
                         class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
-                        >Fecha</label
+                        >{t("txn.colDate")}</label
                     >
                     <input
                         type="date"
@@ -65,22 +69,22 @@
                 <div>
                     <label
                         class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
-                        >Estado</label
+                        >{t("modal.purchase.status")}</label
                     >
                     <select
                         name="estado"
                         required
                         class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-all"
                     >
-                        <option value="pendiente">Pendiente</option>
-                        <option value="recibida">Recibida</option>
-                        <option value="cancelada">Cancelada</option>
+                        <option value="pendiente">{t("modal.purchase.statusPending")}</option>
+                        <option value="recibida">{t("modal.purchase.statusReceived")}</option>
+                        <option value="cancelada">{t("modal.purchase.statusCancelled")}</option>
                     </select>
                 </div>
                 <div>
                     <label
                         class="block text-xs font-medium text-emerald-300 uppercase tracking-wider mb-2"
-                        >Importe Total (Opcional)</label
+                        >{t("common.totalAmountOptional")}</label
                     >
                     <div class="relative">
                         <input
@@ -98,7 +102,7 @@
                         </div>
                     </div>
                     <p class="text-[10px] text-slate-500 mt-1">
-                        Reparte según coste unitario
+                        {t("modal.purchase.distribute")}
                     </p>
                 </div>
             </div>
@@ -109,7 +113,7 @@
                     <h4
                         class="text-sm font-bold text-white uppercase tracking-wider"
                     >
-                        Productos
+                        {t("common.products")}
                     </h4>
                     <button
                         type="button"
@@ -129,7 +133,7 @@
                                 stroke-width="2"
                                 d="M12 4v16m8-8H4"></path>
                         </svg>
-                        Añadir Producto
+                        {t("common.addProduct")}
                     </button>
                 </div>
 
@@ -145,7 +149,7 @@
             <div
                 class="flex justify-between items-center pt-4 border-t border-white/5"
             >
-                <div class="text-sm text-slate-400">Total Estimado</div>
+                <div class="text-sm text-slate-400">{t("modal.purchase.estimatedTotal")}</div>
                 <div
                     class="text-xl font-bold text-emerald-400"
                     id="purchase-total-display"
@@ -160,13 +164,13 @@
                     onclick="document.getElementById('modal-compra').close()"
                     class="px-6 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
                 >
-                    Cancelar
+                    {t("common.cancel")}
                 </button>
                 <button
                     type="submit"
                     class="px-6 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/20 transition-all"
                 >
-                    Guardar Compra
+                    {t("modal.purchase.save")}
                 </button>
             </div>
         </form>
@@ -211,6 +215,7 @@
 
 <script>
     import { currentProject } from "../stores/projectStore";
+    import { t, locale } from "../i18n/client";
 
     interface Product {
         id: number;
@@ -265,22 +270,22 @@
 
         row.innerHTML = `
             <div class="md:col-span-5">
-                <label class="block text-xs text-slate-500 mb-1">Producto</label>
+                <label class="block text-xs text-slate-500 mb-1">${t("item.product")}</label>
                 <select name="product[]" class="product-select w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-                    <option value="">Seleccionar</option>
+                    <option value="">${t("common.select")}</option>
                 </select>
             </div>
             <div class="grid grid-cols-3 gap-2 md:contents">
                 <div class="md:col-span-2">
-                    <label class="block text-xs text-slate-500 mb-1">Uds</label>
+                    <label class="block text-xs text-slate-500 mb-1">${t("item.units")}</label>
                     <input type="number" name="units[]" class="units-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" placeholder="1" min="0.01" step="0.01" value="${units}">
                 </div>
                 <div class="md:col-span-2">
-                    <label class="block text-xs text-slate-500 mb-1">Total (€)</label>
+                    <label class="block text-xs text-slate-500 mb-1">${t("item.totalEur")}</label>
                     <input type="number" name="total[]" step="0.01" class="total-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" placeholder="0.00" value="${data ? total : ""}">
                 </div>
                 <div class="md:col-span-2">
-                    <label class="block text-xs text-slate-500 mb-1">IVA %</label>
+                    <label class="block text-xs text-slate-500 mb-1">${t("item.vat")}</label>
                     <input type="number" name="tax[]" class="tax-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" value="${tax}">
                 </div>
             </div>
@@ -336,7 +341,7 @@
         }
         
         if (totalDisplay) {
-            totalDisplay.textContent = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(total);
+            totalDisplay.textContent = new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(total);
         }
     }
 
@@ -371,7 +376,7 @@
             e.preventDefault();
 
             if (!activeProjectId) {
-                alert("Selecciona un proyecto primero");
+                alert(t("common.noProjectFirst"));
                 return;
             }
 
@@ -452,7 +457,7 @@
             });
 
             if (items.length === 0) {
-                alert("Añade al menos un producto");
+                alert(t("modal.purchase.addAtLeastOne"));
                 return;
             }
 
@@ -480,8 +485,8 @@
                 if (res.ok) {
                     alert(
                         isEdit
-                            ? "Compra actualizada correctamente"
-                            : "Compra guardada correctamente",
+                            ? t("modal.purchase.updated")
+                            : t("modal.purchase.created"),
                     );
                     form.reset();
                     delete form.dataset.editingId;
@@ -491,18 +496,18 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                     </svg>
-                    Nueva Compra`;
+                    ${t("modal.purchase.title")}`;
 
                     if (itemsContainer) itemsContainer.innerHTML = "";
                     modal.close();
                     window.location.reload();
                 } else {
                     const err = await res.json();
-                    alert("Error al guardar: " + (err.error || "Desconocido"));
+                    alert(t("common.saveErrorPrefix") + " " + (err.error || t("common.unknown")));
                 }
             } catch (e) {
                 console.error(e);
-                alert("Error de conexión");
+                alert(t("common.connectionError"));
             }
         });
 
@@ -517,7 +522,7 @@
                     // Set editing state
                     form.dataset.editingId = purchase.id.toString();
                     const title = modal.querySelector("h3");
-                    if (title) title.textContent = `Editar Compra #${purchase.id}`;
+                    if (title) title.textContent = t("modal.purchase.editTitle", { id: purchase.id });
 
                     // Fill fields
                     const dateInput = form.querySelector(
@@ -546,7 +551,7 @@
                 }
             } catch (e) {
                 console.error(e);
-                alert("Error al cargar la compra");
+                alert(t("modal.purchase.loadError"));
             }
         };
     });

@@ -36,9 +36,11 @@ const projectIdParam = Astro.url.searchParams.get("projectId");
 let projectId = projectIdParam
 	? parseInt(projectIdParam)
 	: projects?.[0]?.id || null;
+
+const { t } = Astro.locals;
 ---
 
-<Layout title="OlivERP | Dashboard">
+<Layout title={t("title.dashboard")}>
 	{
 		isDemoMode && (
 			<div class="mb-6 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3">
@@ -57,9 +59,7 @@ let projectId = projectIdParam
 					/>
 				</svg>
 				<span>
-					<strong>Modo Demo</strong> — Estás viendo datos de ejemplo.
-					Configura las variables de entorno de Supabase para conectar
-					con datos reales.
+					<strong>{t("demo.title")}</strong> — {t("demo.full")}
 				</span>
 			</div>
 		)
@@ -115,16 +115,16 @@ let projectId = projectIdParam
 						></path>
 					</svg>
 				</div>
-				<h3 class="text-2xl font-bold text-white mb-2">Nueva Venta</h3>
+				<h3 class="text-2xl font-bold text-white mb-2">{t("index.newSale")}</h3>
 				<p
 					class="text-indigo-200/60 text-sm max-w-[180px] leading-relaxed"
 				>
-					Registrar salida de stock y generar ingreso
+					{t("index.newSaleDesc")}
 				</p>
 				<div
 					class="mt-6 inline-flex items-center gap-2 text-indigo-400 font-medium text-sm group-hover:gap-3 transition-all"
 				>
-					<span>Comenzar</span>
+					<span>{t("common.start")}</span>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="16"
@@ -190,16 +190,16 @@ let projectId = projectIdParam
 						<path d="m3 8 4-4 4 4"></path><path d="M7 4v16"></path>
 					</svg>
 				</div>
-				<h3 class="text-2xl font-bold text-white mb-2">Nueva Compra</h3>
+				<h3 class="text-2xl font-bold text-white mb-2">{t("index.newPurchase")}</h3>
 				<p
 					class="text-emerald-200/60 text-sm max-w-[180px] leading-relaxed"
 				>
-					Registrar entrada de mercancía
+					{t("index.newPurchaseDesc")}
 				</p>
 				<div
 					class="mt-6 inline-flex items-center gap-2 text-emerald-400 font-medium text-sm group-hover:gap-3 transition-all"
 				>
-					<span>Comenzar</span>
+					<span>{t("common.start")}</span>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="16"
@@ -263,17 +263,17 @@ let projectId = projectIdParam
 					</svg>
 				</div>
 				<h3 class="text-2xl font-bold text-white mb-2">
-					Ingreso / Gasto
+					{t("index.incomeExpense")}
 				</h3>
 				<p
 					class="text-pink-200/60 text-sm max-w-[180px] leading-relaxed"
 				>
-					Registrar movimientos varios
+					{t("index.incomeExpenseDesc")}
 				</p>
 				<div
 					class="mt-6 inline-flex items-center gap-2 text-pink-400 font-medium text-sm group-hover:gap-3 transition-all"
 				>
-					<span>Comenzar</span>
+					<span>{t("common.start")}</span>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="16"

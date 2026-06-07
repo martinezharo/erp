@@ -1,17 +1,17 @@
 import type { APIRoute } from "astro";
 import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
 
-export const POST: APIRoute = async ({ request, cookies }) => {
-    return handleSave(request, cookies, "POST");
+export const POST: APIRoute = async ({ request, cookies, locals }) => {
+    return handleSave(request, cookies, "POST", locals);
 };
 
-export const PUT: APIRoute = async ({ request, cookies }) => {
-    return handleSave(request, cookies, "PUT");
+export const PUT: APIRoute = async ({ request, cookies, locals }) => {
+    return handleSave(request, cookies, "PUT", locals);
 };
 
-async function handleSave(request: Request, cookies: any, method: string) {
+async function handleSave(request: Request, cookies: any, method: string, locals: App.Locals) {
     if (isDemoMode) {
-        return new Response(JSON.stringify({ error: "No disponible en modo demo" }), { status: 403 });
+        return new Response(JSON.stringify({ error: locals.t("api.demoUnavailable") }), { status: 403 });
     }
 
     const supabase = getAuthenticatedSupabase(cookies);

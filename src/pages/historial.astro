@@ -3,6 +3,8 @@ import Layout from "../layouts/Layout.astro";
 import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
 import { mockProjects, mockFinanzas } from "../lib/mock-data";
 
+const { t, locale } = Astro.locals;
+
 let projects: any[] = [];
 let historyData: any[] = [];
 
@@ -67,7 +69,7 @@ historyData.forEach((item) => {
   if (viewParam === "month") {
     const month = date.getMonth();
     key = `${year}-${month}`;
-    const dateStr = new Intl.DateTimeFormat("es-ES", {
+    const dateStr = new Intl.DateTimeFormat(locale, {
       month: "short",
       year: "numeric",
     }).format(date);
@@ -76,7 +78,7 @@ historyData.forEach((item) => {
   } else if (viewParam === "quarter") {
     const quarter = Math.floor(date.getMonth() / 3) + 1;
     key = `${year}-Q${quarter}`;
-    label = `T${quarter} ${year}`;
+    label = `${t("dashboard.quarterShort", { n: quarter })} ${year}`;
     sortKey = key;
   } else if (viewParam === "year") {
     key = `${year}`;
@@ -84,7 +86,7 @@ historyData.forEach((item) => {
     sortKey = key;
   } else {
     key = "total";
-    label = "Total Histórico";
+    label = t("history.totalHistoric");
     sortKey = "0";
   }
 
@@ -119,7 +121,7 @@ const sortedGroups = Array.from(groupedData.values()).sort((a, b) => {
 });
 
 const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("es-ES", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 2,
@@ -127,14 +129,14 @@ const formatCurrency = (value: number) => {
 };
 
 const viewOptions = [
-  { value: "month", label: "Meses" },
-  { value: "quarter", label: "Trimestres" },
-  { value: "year", label: "Años" },
-  { value: "total", label: "Total" },
+  { value: "month", label: t("history.viewMonths") },
+  { value: "quarter", label: t("history.viewQuarters") },
+  { value: "year", label: t("history.viewYears") },
+  { value: "total", label: t("history.viewTotal") },
 ];
 ---
 
-<Layout title="OlivERP | Historial">
+<Layout title={t("title.history")}>
   {
     isDemoMode && (
       <div class="mb-6 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3">
@@ -153,7 +155,7 @@ const viewOptions = [
           />
         </svg>
         <span>
-          <strong>Modo Demo</strong> — Datos de ejemplo.
+          <strong>{t("demo.title")}</strong> — {t("demo.short")}
         </span>
       </div>
     )
@@ -163,9 +165,9 @@ const viewOptions = [
     class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
   >
     <div>
-      <h1 class="text-2xl font-bold text-white mb-2">Historial Financiero</h1>
+      <h1 class="text-2xl font-bold text-white mb-2">{t("history.title")}</h1>
       <p class="text-slate-400 text-sm">
-        Visualiza el rendimiento financiero agrupado por periodos.
+        {t("history.subtitle")}
       </p>
     </div>
 
@@ -192,19 +194,19 @@ const viewOptions = [
     !projectId ? (
       <div class="text-center py-20">
         <p class="text-slate-500">
-          Selecciona un proyecto para ver su historial.
+          {t("history.selectProject")}
         </p>
       </div>
     ) : (
       <div class="flex flex-col gap-4">
         {/* Table Header */}
         <div class="hidden md:grid md:grid-cols-6 gap-4 px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider bg-[#14151a]/50 rounded-xl border border-white/5">
-          <div>Periodo</div>
-          <div class="text-right">Ingresos</div>
-          <div class="text-right">Gastos</div>
-          <div class="text-right">Balance</div>
-          <div class="text-right">Saldo IVA</div>
-          <div class="text-right">URP</div>
+          <div>{t("history.period")}</div>
+          <div class="text-right">{t("finance.income")}</div>
+          <div class="text-right">{t("finance.expenses")}</div>
+          <div class="text-right">{t("finance.balance")}</div>
+          <div class="text-right">{t("finance.vatBalance")}</div>
+          <div class="text-right">{t("finance.urp")}</div>
         </div>
 
         {sortedGroups.map((group) => (
@@ -258,7 +260,7 @@ const viewOptions = [
               <div class="grid grid-cols-2 gap-4 md:contents">
                 <div class="flex flex-col md:block md:text-right">
                   <span class="md:hidden text-xs text-slate-500 mb-1">
-                    Ingresos
+                    {t("finance.income")}
                   </span>
                   <span class="text-emerald-400 font-bold">
                     {formatCurrency(group.ingresos)}
@@ -267,7 +269,7 @@ const viewOptions = [
 
                 <div class="flex flex-col md:block md:text-right">
                   <span class="md:hidden text-xs text-slate-500 mb-1">
-                    Gastos
+                    {t("finance.expenses")}
                   </span>
                   <span class="text-red-400 font-bold">
                     {formatCurrency(group.gastos)}
@@ -276,7 +278,7 @@ const viewOptions = [
 
                 <div class="flex flex-col md:block md:text-right">
                   <span class="md:hidden text-xs text-slate-500 mb-1">
-                    Balance
+                    {t("finance.balance")}
                   </span>
                   <span
                     class={`font-bold ${
@@ -287,9 +289,9 @@ const viewOptions = [
                   </span>
                 </div>
 
-                <div class="flex flex-col md:block md:text-right" title={`Soportado: ${formatCurrency(group.iva_soportado)} | Repercutido: ${formatCurrency(group.iva_repercutido)}`}>
+                <div class="flex flex-col md:block md:text-right" title={`${t("finance.vatSupported")}: ${formatCurrency(group.iva_soportado)} | ${t("finance.vatCharged")}: ${formatCurrency(group.iva_repercutido)}`}>
                   <span class="md:hidden text-xs text-slate-500 mb-1">
-                    Saldo IVA
+                    {t("finance.vatBalance")}
                   </span>
                   <span
                     class={`font-bold transition-colors cursor-help ${
@@ -305,7 +307,7 @@ const viewOptions = [
                 </div>
 
                 <div class="flex flex-col md:block md:text-right">
-                  <span class="md:hidden text-xs text-slate-500 mb-1">URP</span>
+                  <span class="md:hidden text-xs text-slate-500 mb-1">{t("finance.urp")}</span>
                   <span
                     class={`font-bold ${
                       group.urp >= 0 ? "text-blue-400" : "text-red-400"

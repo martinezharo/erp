@@ -6,6 +6,7 @@ interface Props {
 }
 
 const { currentPage, totalPages, baseUrl } = Astro.props;
+const { t } = Astro.locals;
 
 const pages = [];
 const maxVisible = 5;
@@ -58,7 +59,7 @@ function getUrl(page: number) {
                         clip-rule="evenodd"
                     />
                 </svg>
-                <span class="ml-1 hidden sm:inline">Anterior</span>
+                <span class="ml-1 hidden sm:inline">{t("pagination.previous")}</span>
             </a>
 
             {/* Page Numbers */}
@@ -89,7 +90,7 @@ function getUrl(page: number) {
                 }`}
                 aria-disabled={currentPage >= totalPages}
             >
-                <span class="mr-1 hidden sm:inline">Siguiente</span>
+                <span class="mr-1 hidden sm:inline">{t("pagination.next")}</span>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="w-4 h-4"

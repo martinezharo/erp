@@ -1,7 +1,15 @@
 import { defineMiddleware } from "astro/middleware";
 import { isDemoMode } from "./lib/supabase";
+import { getLangFromHeader, getLocale, useTranslations } from "./i18n/utils";
 
-export const onRequest = defineMiddleware(async ({ cookies, redirect, request }, next) => {
+export const onRequest = defineMiddleware(async ({ cookies, redirect, request, locals }, next) => {
+    // Resolve language from the browser's Accept-Language header. Done first so
+    // it is available to both pages and API routes (including demo mode).
+    const lang = getLangFromHeader(request.headers.get("accept-language"));
+    locals.lang = lang;
+    locals.locale = getLocale(lang);
+    locals.t = useTranslations(lang);
+
     // In demo mode, skip all authentication checks
     if (isDemoMode) {
         return next();

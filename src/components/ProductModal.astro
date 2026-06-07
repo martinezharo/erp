@@ -1,3 +1,7 @@
+---
+const { t } = Astro.locals;
+---
+
 <dialog
     id="modal-producto"
     class="bg-transparent m-auto backdrop:bg-black/80 backdrop:backdrop-blur-sm w-full max-w-md p-0 open:animate-fade-in relative z-50"
@@ -25,7 +29,7 @@
                     <path d="m3.3 7 8.7 5 8.7-5" />
                     <path d="M12 22v-10" />
                 </svg>
-                Nuevo Producto
+                {t("modal.product.title")}
             </h3>
             <button
                 onclick="document.getElementById('modal-producto').close()"
@@ -51,13 +55,13 @@
             <div>
                 <label
                     class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2"
-                    >Nombre del Producto</label
+                    >{t("modal.product.name")}</label
                 >
                 <input
                     type="text"
                     name="nombre"
                     required
-                    placeholder="Mando LG"
+                    placeholder={t("modal.product.placeholder")}
                     class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500 transition-all placeholder-slate-600"
                 />
             </div>
@@ -80,7 +84,7 @@
                             stroke-width="2"
                             d="M5 13l4 4L19 7"></path>
                     </svg>
-                    Guardar Producto
+                    {t("modal.product.save")}
                 </button>
             </div>
         </form>
@@ -89,6 +93,7 @@
 
 <script>
     import { currentProject } from '../stores/projectStore';
+    import { t } from '../i18n/client';
 
     document.addEventListener('astro:page-load', () => {
         const form = document.getElementById('form-producto') as HTMLFormElement;
@@ -113,7 +118,7 @@
                 }
 
                 if (!projectId) {
-                    alert('Error: No se ha seleccionado ningún proyecto.');
+                    alert(t('modal.product.noProject'));
                     return;
                 }
 
@@ -141,7 +146,7 @@
                     }
                 } catch (error) {
                     console.error('Error creating product:', error);
-                    alert('Error al crear el producto');
+                    alert(t('modal.product.createError'));
                 }
             });
         }
