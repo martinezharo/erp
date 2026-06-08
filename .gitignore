@@ -29,3 +29,7 @@ pnpm-debug.log*
 # vscode setting folder
 .vscode/
 
+# agents settings
+.claude/
+.agents/
+
