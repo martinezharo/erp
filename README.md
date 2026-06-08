@@ -63,7 +63,6 @@ OlivERP features an automatic **Demo Mode**. This allows anyone to explore the f
    ```env
    PUBLIC_SUPABASE_URL=your_supabase_url
    PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
    ```
 
 4. **Initialize the Database**:
