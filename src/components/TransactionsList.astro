@@ -10,9 +10,10 @@ interface TransactionDay {
 
 interface Props {
   transactions: TransactionDay[];
+  projectId?: number | null;
 }
 
-const { transactions } = Astro.props;
+const { transactions, projectId } = Astro.props;
 // Aliased to `tr` because the template uses `t` as the per-day map variable.
 const { t: tr, locale } = Astro.locals;
 
@@ -128,11 +129,12 @@ const formatCurrency = (value: number) => {
 </div>
 
 <!-- Flat / Transactions view (toggled by JS) -->
-<div id="flat-view" class="hidden">
+<div id="flat-view" class="hidden" data-project-id={projectId ?? ""}>
     <div id="flat-view-loading" class="p-8 text-center text-slate-500 italic bg-white/5 rounded-2xl border border-white/5">
         {tr("common.loadingMovements")}
     </div>
     <div id="flat-view-content" class="hidden"></div>
+    <div id="flat-view-pager" class="mt-8 hidden"></div>
 </div>
 
 <script>
@@ -149,30 +151,54 @@ const formatCurrency = (value: number) => {
     }
 
     document.addEventListener("astro:page-load", () => {
-        // ── View mode toggle ──────────────────────────────────────────────────
+        // ── View mode toggle + filters ────────────────────────────────────────
         const STORAGE_KEY = 'txn-view-mode';
+        const PAGE_SIZE = 20;
+
         const dailyView = document.getElementById('daily-view');
         const flatView = document.getElementById('flat-view');
         const btnDaily = document.getElementById('btn-view-daily');
         const btnList = document.getElementById('btn-view-list');
+        const dailyPagination = document.getElementById('daily-pagination');
+        const filtersGroup = document.getElementById('txn-filters');
 
-        let flatLoaded = false;
+        const searchInput = document.getElementById('filter-search') as HTMLInputElement | null;
+        const typeSelect = document.getElementById('filter-type') as HTMLSelectElement | null;
+        const channelSelect = document.getElementById('filter-channel') as HTMLSelectElement | null;
+        const dateFromInput = document.getElementById('filter-date-from') as HTMLInputElement | null;
+        const dateToInput = document.getElementById('filter-date-to') as HTMLInputElement | null;
+        const amountMinInput = document.getElementById('filter-amount-min') as HTMLInputElement | null;
+        const amountMaxInput = document.getElementById('filter-amount-max') as HTMLInputElement | null;
+        const clearBtn = document.getElementById('filter-clear');
+        const moreBtn = document.getElementById('filters-more-btn');
+        const morePanel = document.getElementById('filters-more-panel');
+        const moreBadge = document.getElementById('filters-badge');
+
+        const filterState = {
+            search: '', type: '', channel: '',
+            dateFrom: '', dateTo: '', amountMin: '', amountMax: '',
+            page: 1,
+        };
 
         function applyMode(mode: string) {
             if (mode === 'list') {
                 dailyView?.classList.add('hidden');
                 flatView?.classList.remove('hidden');
+                dailyPagination?.classList.add('hidden');
+                filtersGroup?.classList.remove('hidden');
+                filtersGroup?.classList.add('flex');
                 btnDaily?.classList.remove('bg-white/10', 'text-white');
                 btnDaily?.classList.add('text-slate-400');
                 btnList?.classList.add('bg-white/10', 'text-white');
                 btnList?.classList.remove('text-slate-400');
-                if (!flatLoaded) {
-                    loadFlatView();
-                    flatLoaded = true;
-                }
+                loadList();
             } else {
                 dailyView?.classList.remove('hidden');
                 flatView?.classList.add('hidden');
+                dailyPagination?.classList.remove('hidden');
+                filtersGroup?.classList.add('hidden');
+                filtersGroup?.classList.remove('flex');
+                morePanel?.classList.add('hidden');
                 btnList?.classList.remove('bg-white/10', 'text-white');
                 btnList?.classList.add('text-slate-400');
                 btnDaily?.classList.add('bg-white/10', 'text-white');
@@ -180,8 +206,164 @@ const formatCurrency = (value: number) => {
             }
         }
 
+        async function loadList() {
+            const loadingEl = document.getElementById('flat-view-loading');
+            const contentEl = document.getElementById('flat-view-content');
+            const pagerEl = document.getElementById('flat-view-pager');
+            if (!loadingEl || !contentEl || !pagerEl) return;
+
+            const projectId = flatView?.dataset.projectId;
+            if (!projectId) {
+                loadingEl.textContent = t('txn.noTransactions');
+                loadingEl.classList.remove('hidden');
+                contentEl.classList.add('hidden');
+                pagerEl.classList.add('hidden');
+                return;
+            }
+
+            loadingEl.textContent = t('common.loadingMovements');
+            loadingEl.classList.remove('hidden');
+            contentEl.classList.add('hidden');
+            pagerEl.classList.add('hidden');
+
+            const params = new URLSearchParams();
+            params.set('projectId', projectId);
+            params.set('page', String(filterState.page));
+            params.set('pageSize', String(PAGE_SIZE));
+            if (filterState.search) params.set('search', filterState.search);
+            if (filterState.type) params.set('type', filterState.type);
+            if (filterState.channel) params.set('channel', filterState.channel);
+            if (filterState.dateFrom) params.set('dateFrom', filterState.dateFrom);
+            if (filterState.dateTo) params.set('dateTo', filterState.dateTo);
+            if (filterState.amountMin) params.set('amountMin', filterState.amountMin);
+            if (filterState.amountMax) params.set('amountMax', filterState.amountMax);
+
+            try {
+                const res = await fetch(`/api/transactions/list?${params.toString()}`);
+                const data = await res.json();
+                const items = (data.items || []).map(
+                    (i: TransactionItem & { date: string }) => ({ ...i, _date: i.date }),
+                ) as (TransactionItem & { _date: string })[];
+
+                loadingEl.classList.add('hidden');
+                contentEl.classList.remove('hidden');
+
+                if (items.length === 0) {
+                    const anyFilter = filterState.search || filterState.type || filterState.channel ||
+                        filterState.dateFrom || filterState.dateTo || filterState.amountMin || filterState.amountMax;
+                    const msg = anyFilter ? t('filters.noResults') : t('txn.noTransactions');
+                    contentEl.innerHTML = `<div class="p-8 text-center text-slate-500 italic bg-white/5 rounded-2xl border border-white/5">${msg}</div>`;
+                    pagerEl.classList.add('hidden');
+                    return;
+                }
+
+                renderFlatView(contentEl, items);
+                renderPager(pagerEl, data.total || 0, data.page || 1);
+            } catch (e) {
+                loadingEl.classList.add('hidden');
+                contentEl.classList.remove('hidden');
+                contentEl.innerHTML = `<div class="p-8 text-center text-red-400 bg-white/5 rounded-2xl border border-white/5">${t('common.errorLoadingData')}</div>`;
+                pagerEl.classList.add('hidden');
+            }
+        }
+
+        function renderPager(container: HTMLElement, total: number, page: number) {
+            const totalPages = Math.ceil(total / PAGE_SIZE);
+            if (totalPages <= 1) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            container.classList.remove('hidden');
+            const prevDisabled = page <= 1;
+            const nextDisabled = page >= totalPages;
+            const btnBase = 'flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors';
+            const enabled = 'bg-white/5 border border-white/10 text-slate-200 hover:bg-white/10';
+            const disabled = 'opacity-40 cursor-not-allowed text-slate-500';
+            container.innerHTML = `
+                <div class="flex items-center justify-between gap-4">
+                    <button data-page="${page - 1}" class="pager-btn ${btnBase} ${prevDisabled ? disabled : enabled}" ${prevDisabled ? 'disabled' : ''}>
+                        ${t('pagination.previous')}
+                    </button>
+                    <span class="text-sm text-slate-400 font-mono">${page} / ${totalPages}</span>
+                    <button data-page="${page + 1}" class="pager-btn ${btnBase} ${nextDisabled ? disabled : enabled}" ${nextDisabled ? 'disabled' : ''}>
+                        ${t('pagination.next')}
+                    </button>
+                </div>`;
+            container.querySelectorAll<HTMLButtonElement>('.pager-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (btn.disabled) return;
+                    const p = parseInt(btn.dataset.page || '1');
+                    if (p >= 1 && p <= totalPages) {
+                        filterState.page = p;
+                        loadList();
+                        flatView?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+        }
+
+        function updateBadge() {
+            if (!moreBadge) return;
+            const count = [filterState.dateFrom, filterState.dateTo, filterState.amountMin, filterState.amountMax]
+                .filter(Boolean).length;
+            if (count > 0) {
+                moreBadge.textContent = String(count);
+                moreBadge.classList.remove('hidden');
+                moreBadge.classList.add('inline-flex');
+            } else {
+                moreBadge.classList.add('hidden');
+                moreBadge.classList.remove('inline-flex');
+            }
+        }
+
+        let searchTimer: ReturnType<typeof setTimeout>;
+        searchInput?.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                filterState.search = searchInput.value.trim();
+                filterState.page = 1;
+                loadList();
+            }, 300);
+        });
+        typeSelect?.addEventListener('change', () => { filterState.type = typeSelect.value; filterState.page = 1; loadList(); });
+        channelSelect?.addEventListener('change', () => { filterState.channel = channelSelect.value; filterState.page = 1; loadList(); });
+        dateFromInput?.addEventListener('change', () => { filterState.dateFrom = dateFromInput.value; filterState.page = 1; updateBadge(); loadList(); });
+        dateToInput?.addEventListener('change', () => { filterState.dateTo = dateToInput.value; filterState.page = 1; updateBadge(); loadList(); });
+        amountMinInput?.addEventListener('change', () => { filterState.amountMin = amountMinInput.value; filterState.page = 1; updateBadge(); loadList(); });
+        amountMaxInput?.addEventListener('change', () => { filterState.amountMax = amountMaxInput.value; filterState.page = 1; updateBadge(); loadList(); });
+
+        clearBtn?.addEventListener('click', () => {
+            filterState.search = ''; filterState.type = ''; filterState.channel = '';
+            filterState.dateFrom = ''; filterState.dateTo = '';
+            filterState.amountMin = ''; filterState.amountMax = ''; filterState.page = 1;
+            if (searchInput) searchInput.value = '';
+            if (typeSelect) typeSelect.value = '';
+            if (channelSelect) channelSelect.value = '';
+            if (dateFromInput) dateFromInput.value = '';
+            if (dateToInput) dateToInput.value = '';
+            if (amountMinInput) amountMinInput.value = '';
+            if (amountMaxInput) amountMaxInput.value = '';
+            updateBadge();
+            morePanel?.classList.add('hidden');
+            loadList();
+        });
+
+        moreBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            morePanel?.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+            if (!morePanel || morePanel.classList.contains('hidden')) return;
+            const target = e.target as HTMLElement;
+            if (!morePanel.contains(target) && !moreBtn?.contains(target)) {
+                morePanel.classList.add('hidden');
+            }
+        });
+
         const savedMode = localStorage.getItem(STORAGE_KEY) || 'daily';
         applyMode(savedMode);
+        updateBadge();
 
         btnDaily?.addEventListener('click', () => {
             localStorage.setItem(STORAGE_KEY, 'daily');
@@ -191,32 +373,6 @@ const formatCurrency = (value: number) => {
             localStorage.setItem(STORAGE_KEY, 'list');
             applyMode('list');
         });
-
-        async function loadFlatView() {
-            const loadingEl = document.getElementById('flat-view-loading');
-            const contentEl = document.getElementById('flat-view-content');
-            if (!loadingEl || !contentEl) return;
-
-            const cards = document.querySelectorAll<HTMLElement>('.transaction-day-card');
-            if (cards.length === 0) {
-                loadingEl.textContent = t('txn.noTransactions');
-                return;
-            }
-
-            const fetches = Array.from(cards).map(card =>
-                fetch(`/api/transactions/details?date=${card.dataset.date}&projectId=${card.dataset.projectId}`)
-                    .then(r => r.json())
-                    .then((items: TransactionItem[]) => items.map(i => ({ ...i, _date: card.dataset.date! })))
-                    .catch(() => [] as (TransactionItem & { _date: string })[])
-            );
-
-            const results = await Promise.all(fetches);
-            const allItems = results.flat() as (TransactionItem & { _date: string })[];
-
-            loadingEl.classList.add('hidden');
-            contentEl.classList.remove('hidden');
-            renderFlatView(contentEl, allItems);
-        }
 
         function renderFlatView(container: HTMLElement, items: (TransactionItem & { _date: string })[]) {
             if (!items || items.length === 0) {
