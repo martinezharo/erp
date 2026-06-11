@@ -314,27 +314,31 @@ const { t } = Astro.locals;
 		});
 	}
 
-	setupModal("modal-venta"); // SalesModal uses this ID
-	setupModal("modal-compra");
-	setupModal("modal-otro");
+	// Re-run on every navigation: with ClientRouter the script only executes
+	// once, but the swapped-in DOM needs fresh listeners.
+	document.addEventListener("astro:page-load", () => {
+		setupModal("modal-venta"); // SalesModal uses this ID
+		setupModal("modal-compra");
+		setupModal("modal-otro");
 
-	// Open Venta Modal Logic
-	const btnOpenVenta = document.getElementById("btn-open-venta");
-	if (btnOpenVenta) {
-		btnOpenVenta.addEventListener("click", () => {
-			const modal = document.getElementById(
-				"modal-venta"
-			) as HTMLDialogElement;
-			if (modal) {
-				modal.showModal();
-				// Optional: Set date to today if empty (logic also in SalesModal but harmless here)
-				const dateInput = modal.querySelector(
-					'input[name="fecha"]'
-				) as HTMLInputElement;
-				if (dateInput && !dateInput.value) {
-					dateInput.value = new Date().toISOString().split("T")[0];
+		// Open Venta Modal Logic
+		const btnOpenVenta = document.getElementById("btn-open-venta");
+		if (btnOpenVenta) {
+			btnOpenVenta.addEventListener("click", () => {
+				const modal = document.getElementById(
+					"modal-venta"
+				) as HTMLDialogElement;
+				if (modal) {
+					modal.showModal();
+					// Optional: Set date to today if empty (logic also in SalesModal but harmless here)
+					const dateInput = modal.querySelector(
+						'input[name="fecha"]'
+					) as HTMLInputElement;
+					if (dateInput && !dateInput.value) {
+						dateInput.value = new Date().toISOString().split("T")[0];
+					}
 				}
-			}
-		});
-	}
+			});
+		}
+	});
 </script>
