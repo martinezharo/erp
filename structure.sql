@@ -286,4 +286,9 @@ END;
 - tipo_transaccion: ingreso, gasto
 
 - estado_venta: pendiente, enviada, devuelta, reembolsada
+
+Notas de uso en SQL manual:
+- Castear enums explícitamente: 'gasto'::tipo_transaccion, 'recibida'::estado_compra, etc.
+- Castear fechas explícitamente: '2026-01-01'::timestamp
+- Los subqueries en VALUES no funcionan en el editor de Supabase; usar CTE + INSERT ... SELECT
 */
