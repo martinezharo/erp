@@ -75,7 +75,7 @@ export const GET: APIRoute = async ({ cookies, url }) => {
                 fecha = m.venta_detalle.ventas.fecha;
                 precio = m.venta_detalle.precio_unitario_venta;
                 canal = m.venta_detalle.ventas.canal || 'Directo';
-            } else if (m.tipo_movimiento === 'ajuste_manual') {
+            } else if (m.tipo_movimiento === 'ajuste manual') {
                 canal = 'Manual';
             }
 

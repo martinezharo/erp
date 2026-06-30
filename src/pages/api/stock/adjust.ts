@@ -26,7 +26,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
             .insert({
                 producto_id: productId,
                 unidades: units,
-                tipo_movimiento: 'ajuste_manual',
+                tipo_movimiento: 'ajuste manual',
                 fecha: date // Use the provided date for manual adjustment
             })
             .select()
