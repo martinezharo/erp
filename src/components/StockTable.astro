@@ -17,7 +17,12 @@ const data = [...rawData].sort((a, b) =>
 // 2. Calculate totals for summary
 const totalProducts = data.length;
 const totalUnits = data.reduce((acc, item) => acc + item.stock_actual, 0);
+// Sale value (stock valued at selling price) and purchase value (stock valued at cost)
 const totalValue = data.reduce((acc, item) => acc + item.valor_stock, 0);
+const totalPurchaseValue = data.reduce(
+    (acc, item) => acc + item.stock_actual * item.coste_ud,
+    0,
+);
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat(locale, {
@@ -52,8 +57,17 @@ const formatNumber = (value: number) => {
     <div class="p-6 rounded-2xl border border-white/5 bg-[#14151a]/50 backdrop-blur-xl shadow-lg relative overflow-hidden group">
         <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         <div class="relative z-10">
-            <p class="text-sm font-medium text-slate-400 mb-1">{t("stock.totalValue")}</p>
-            <p class="text-3xl font-bold text-emerald-400 tracking-tight">{formatCurrency(totalValue)}</p>
+            <p class="text-sm font-medium text-slate-400 mb-3">{t("stock.totalValue")}</p>
+            <div class="flex items-baseline gap-3 flex-wrap">
+                <div>
+                    <span class="block text-[11px] font-medium uppercase tracking-wide text-slate-500">{t("stock.totalSaleValue")}</span>
+                    <span class="text-2xl font-bold text-emerald-400 tracking-tight">{formatCurrency(totalValue)}</span>
+                </div>
+                <div>
+                    <span class="block text-[11px] font-medium uppercase tracking-wide text-slate-500">{t("stock.totalPurchaseValue")}</span>
+                    <span class="text-2xl font-bold text-slate-300 tracking-tight">{formatCurrency(totalPurchaseValue)}</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
