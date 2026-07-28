@@ -26,6 +26,15 @@ export const onRequest = defineMiddleware(async ({ cookies, redirect, request, l
         return next();
     }
 
+    // The machine-facing API authenticates itself: an API key travels in a
+    // header, not in the session cookies checked below. Redirecting a
+    // programmatic caller to an HTML login page would turn a clear 401 into a
+    // confusing 200, so these routes always resolve their own auth and return
+    // JSON errors.
+    if (url.pathname.startsWith("/api/v1/")) {
+        return next();
+    }
+
     if (!accessToken || !refreshToken) {
         return redirect("/login");
     }
