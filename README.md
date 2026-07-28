@@ -63,8 +63,11 @@ OlivERP features an automatic **Demo Mode**. This allows anyone to explore the f
    Create a `.env` file in the root directory and add your Supabase credentials:
    ```env
    PUBLIC_SUPABASE_URL=your_supabase_url
-   PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
    ```
+
+   The legacy `PUBLIC_SUPABASE_ANON_KEY` is still accepted as a fallback, but Supabase
+   has replaced it with the publishable key, which can be rotated independently.
 
 4. **Initialize the Database**:
    Run the SQL provided in `structure.sql` in your Supabase SQL Editor to create the necessary tables, views, and triggers.

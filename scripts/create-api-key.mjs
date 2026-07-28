@@ -10,8 +10,9 @@
  *   node scripts/create-api-key.mjs --nombre "n8n" --proyecto 1 --scopes read,write
  *   node scripts/create-api-key.mjs --nombre "Informes" --scopes read --expira 2027-01-01
  *
- * Requires PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, read from the
- * environment or from a local .env file.
+ * Requires PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY (the legacy
+ * SUPABASE_SERVICE_ROLE_KEY still works), read from the environment or from a
+ * local .env file.
  *
  * The key format and hashing must stay in step with src/lib/api/keys.ts.
  */
@@ -86,9 +87,11 @@ async function main() {
     }
 
     const url = process.env.PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !serviceKey) {
-        fail("Faltan PUBLIC_SUPABASE_URL y/o SUPABASE_SERVICE_ROLE_KEY.");
+    // Prefer the modern secret key; fall back to the legacy service_role key.
+    const secretKey =
+        process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !secretKey) {
+        fail("Faltan PUBLIC_SUPABASE_URL y/o SUPABASE_SECRET_KEY.");
     }
 
     const bytes = new Uint8Array(24);
@@ -98,7 +101,7 @@ async function main() {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
     const keyHash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 
-    const supabase = createClient(url, serviceKey, {
+    const supabase = createClient(url, secretKey, {
         auth: { persistSession: false, autoRefreshToken: false },
     });
 

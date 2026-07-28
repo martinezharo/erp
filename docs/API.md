@@ -30,15 +30,36 @@ Crea las tablas `api_keys` e `idempotency_keys` y las funciones transaccionales
 ### 2. Configurar el secreto del servidor
 
 Las peticiones autenticadas por API key no tienen usuario de Supabase, así que
-el servidor necesita la clave de servicio:
+el servidor necesita una **secret key** de Supabase:
 
 ```env
-SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_SECRET_KEY=sb_secret_...
 ```
+
+La creas en el dashboard de Supabase, en **Settings → API Keys → Publishable and
+secret API keys**. Si el proyecto es antiguo verás un botón *Create new API
+keys*: crearlas es seguro y no rompe nada, se añaden junto a las que ya tienes.
 
 **Sin prefijo `PUBLIC_`**, para que Astro nunca la incluya en el bundle del
 cliente. En Cloudflare, configúrala como secreto (`wrangler secret put
-SUPABASE_SERVICE_ROLE_KEY`), no como variable en texto plano.
+SUPABASE_SECRET_KEY`), no como variable en texto plano.
+
+> **Sobre las keys legacy.** La `service_role` sigue funcionando (`SUPABASE_SERVICE_ROLE_KEY`
+> se acepta como alternativa), pero Supabase la ha sustituido por las secret keys
+> y solo la mantiene hasta finales de 2026. Merece la pena migrar ya: las
+> `anon`/`service_role` derivan del JWT secret del proyecto, así que no se pueden
+> rotar sin tocar todo lo demás, mientras que las nuevas se crean, nombran y
+> revocan por separado. Además una secret key **devuelve 401 si se usa desde un
+> navegador** (Supabase lo detecta por el `User-Agent`), red de seguridad que la
+> `service_role` no tenía.
+>
+> En el lado cliente el equivalente es la publishable key: define
+> `PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...` y tiene prioridad sobre
+> `PUBLIC_SUPABASE_ANON_KEY`, que se sigue aceptando.
+>
+> Ojo con el nombre: la *secret key* es de Supabase y va en el servidor; las
+> *API keys* (`erp_sk_...`) son las de este ERP y son las que reparten a los
+> agentes. No son lo mismo.
 
 ### 3. Crear una API key
 
@@ -221,7 +242,7 @@ es lo que permite a un modelo corregir la llamada en lugar de reintentarla igual
 | `conflict`             | 409  | Petición en curso con la misma `Idempotency-Key`.   |
 | `idempotency_mismatch` | 422  | Clave reutilizada con otro cuerpo.                  |
 | `demo_mode`            | 403  | El despliegue está en modo demo.                    |
-| `not_configured`       | 503  | Falta `SUPABASE_SERVICE_ROLE_KEY` en el servidor.   |
+| `not_configured`       | 503  | Falta `SUPABASE_SECRET_KEY` en el servidor.         |
 | `internal_error`       | 500  | Fallo del servidor.                                 |
 
 ---

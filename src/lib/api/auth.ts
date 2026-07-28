@@ -1,7 +1,12 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { APIContext } from "astro";
 import { isDemoMode } from "../supabase";
-import { getEnv } from "./env";
+import {
+    getEnv,
+    SUPABASE_PUBLIC_KEY_VARS,
+    SUPABASE_SECRET_KEY_VARS,
+    SUPABASE_URL_VARS,
+} from "./env";
 import { ApiError } from "./errors";
 import { extractApiKey, hashApiKey, type Scope } from "./keys";
 
@@ -24,38 +29,38 @@ export interface Principal {
 }
 
 /**
- * Service-role client, used only for API-key requests. Those callers have no
+ * Privileged client, used only for API-key requests. Those callers have no
  * Supabase user, so there is no session to act under; the scope and project
  * checks in this module are what stands in for row-level security.
  */
-function createServiceClient(locals: App.Locals): SupabaseClient {
-    const url = getEnv(locals, "PUBLIC_SUPABASE_URL");
-    const serviceKey = getEnv(locals, "SUPABASE_SERVICE_ROLE_KEY");
+function createSecretClient(locals: App.Locals): SupabaseClient {
+    const url = getEnv(locals, ...SUPABASE_URL_VARS);
+    const secretKey = getEnv(locals, ...SUPABASE_SECRET_KEY_VARS);
 
-    if (!url || !serviceKey) {
+    if (!url || !secretKey) {
         throw new ApiError(
             "not_configured",
             "La autenticacion por API key no esta configurada en este despliegue.",
             {
-                hint: "Define SUPABASE_SERVICE_ROLE_KEY como secreto del servidor (nunca con prefijo PUBLIC_).",
+                hint: "Define SUPABASE_SECRET_KEY (sb_secret_...) como secreto del servidor, nunca con prefijo PUBLIC_.",
             },
         );
     }
 
-    return createClient(url, serviceKey, {
+    return createClient(url, secretKey, {
         auth: { persistSession: false, autoRefreshToken: false },
     });
 }
 
 function sessionClient(context: APIContext): SupabaseClient {
-    const url = getEnv(context.locals, "PUBLIC_SUPABASE_URL");
-    const anonKey = getEnv(context.locals, "PUBLIC_SUPABASE_ANON_KEY");
+    const url = getEnv(context.locals, ...SUPABASE_URL_VARS);
+    const publicKey = getEnv(context.locals, ...SUPABASE_PUBLIC_KEY_VARS);
 
-    if (!url || !anonKey) {
+    if (!url || !publicKey) {
         throw new ApiError("not_configured", "Supabase no esta configurado en este despliegue.");
     }
 
-    const client = createClient(url, anonKey, {
+    const client = createClient(url, publicKey, {
         auth: { persistSession: false, autoRefreshToken: false },
     });
 
@@ -73,7 +78,7 @@ function sessionClient(context: APIContext): SupabaseClient {
 const LAST_USED_THROTTLE_MS = 60_000;
 
 async function resolveApiKey(context: APIContext, rawKey: string): Promise<Principal> {
-    const supabase = createServiceClient(context.locals);
+    const supabase = createSecretClient(context.locals);
     const keyHash = await hashApiKey(rawKey);
 
     const { data: apiKey, error } = await supabase
@@ -135,7 +140,7 @@ async function resolveSession(context: APIContext): Promise<Principal> {
 export async function resolvePrincipal(context: APIContext): Promise<Principal> {
     if (isDemoMode) {
         throw new ApiError("demo_mode", "La API no esta disponible en modo demo.", {
-            hint: "Configura PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON_KEY para salir del modo demo.",
+            hint: "Configura PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_PUBLISHABLE_KEY para salir del modo demo.",
         });
     }
 
