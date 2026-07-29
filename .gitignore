@@ -5,6 +5,8 @@ dist/
 
 # dependencies
 node_modules/
+# this project uses pnpm; keeps an accidental `npm install` from reintroducing its lockfile
+package-lock.json
 
 # logs
 npm-debug.log*
