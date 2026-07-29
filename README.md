@@ -18,6 +18,7 @@
 - 🛒 **Sales & Purchase Management**: Streamlined workflows for recording transactions and managing product units.
 - 📊 **Stock Intelligence**: Predictive alerts for "Days of inventory remaining" and restock valuations.
 - ⚡ **Built for Speed**: Powered by Astro for near-instant load times and a sleek developer experience.
+- 🤖 **Automation-ready API**: A documented REST API with API-key auth, strict validation and safe retries, so AI agents and tools like n8n or Make can drive the ERP. See [docs/API.md](./docs/API.md).
 
 ## 🛠 Tech Stack
 
@@ -62,11 +63,16 @@ OlivERP features an automatic **Demo Mode**. This allows anyone to explore the f
    Create a `.env` file in the root directory and add your Supabase credentials:
    ```env
    PUBLIC_SUPABASE_URL=your_supabase_url
-   PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
    ```
+
+   The legacy `PUBLIC_SUPABASE_ANON_KEY` is still accepted as a fallback, but Supabase
+   has replaced it with the publishable key, which can be rotated independently.
 
 4. **Initialize the Database**:
    Run the SQL provided in `structure.sql` in your Supabase SQL Editor to create the necessary tables, views, and triggers.
+
+   To also enable the automation API, run `sql/agent-api.sql` afterwards and follow [docs/API.md](./docs/API.md).
 
 5. **Start Development Server**:
    ```bash
@@ -81,6 +87,7 @@ OlivERP features an automatic **Demo Mode**. This allows anyone to explore the f
 | `pnpm build` | Build the production-ready site to `./dist/` |
 | `pnpm preview` | Preview your build locally before deploying |
 | `pnpm astro ...` | Run Astro CLI commands |
+| `pnpm api:key --nombre "..."` | Create an API key for the automation API |
 
 ## 🤝 Contributing
 
