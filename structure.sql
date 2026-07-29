@@ -1,3 +1,17 @@
+CREATE TABLE public.api_keys (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nombre character varying NOT NULL,
+  key_hash character varying NOT NULL UNIQUE,
+  key_prefix character varying NOT NULL,
+  proyecto_id integer,
+  scopes ARRAY NOT NULL DEFAULT ARRAY['read'::text],
+  activa boolean NOT NULL DEFAULT true,
+  expira_en timestamp with time zone,
+  ultimo_uso_en timestamp with time zone,
+  creada_en timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT api_keys_pkey PRIMARY KEY (id),
+  CONSTRAINT api_keys_proyecto_id_fkey FOREIGN KEY (proyecto_id) REFERENCES public.proyectos(id)
+);
 CREATE TABLE public.compra_detalle (
   id integer NOT NULL DEFAULT nextval('compra_detalle_id_seq'::regclass),
   compra_id integer NOT NULL,
@@ -16,6 +30,19 @@ CREATE TABLE public.compras (
   estado USER-DEFINED NOT NULL,
   CONSTRAINT compras_pkey PRIMARY KEY (id),
   CONSTRAINT compras_proyecto_id_fkey FOREIGN KEY (proyecto_id) REFERENCES public.proyectos(id)
+);
+CREATE TABLE public.idempotency_keys (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  idempotency_key character varying NOT NULL,
+  api_key_id uuid,
+  endpoint character varying NOT NULL,
+  request_hash character varying NOT NULL,
+  response_status integer NOT NULL,
+  response_body jsonb NOT NULL,
+  creada_en timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT idempotency_keys_pkey PRIMARY KEY (id),
+  CONSTRAINT idempotency_keys_unique UNIQUE (idempotency_key, endpoint),
+  CONSTRAINT idempotency_keys_api_key_id_fkey FOREIGN KEY (api_key_id) REFERENCES public.api_keys(id) ON DELETE CASCADE
 );
 CREATE TABLE public.movimientos_stock (
   id integer NOT NULL DEFAULT nextval('movimientos_stock_id_seq'::regclass),
@@ -275,6 +302,32 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
+
+-- Funciones de la API v1 (script completo en sql/agent-api.sql)
+
+/*
+Escrituras multi-tabla que el cliente HTTP no puede envolver en una transacción.
+Cada una inserta la cabecera y sus líneas de forma atómica, y valida que los
+productos pertenezcan al proyecto indicado. `p_items` es un array JSON de
+{ producto_id, unidades, precio_unitario, porcentaje_iva }.
+
+- crear_venta(p_proyecto_id int, p_fecha timestamp, p_canal varchar,
+              p_items jsonb, p_estado varchar DEFAULT 'enviada') → jsonb {id}
+- actualizar_venta(p_venta_id int, p_fecha timestamp, p_canal varchar,
+                   p_estado varchar, p_items jsonb) → jsonb {id}
+- crear_compra(p_proyecto_id int, p_fecha timestamp, p_items jsonb,
+               p_estado varchar DEFAULT 'recibida') → jsonb {id}
+- actualizar_compra(p_compra_id int, p_fecha timestamp, p_estado varchar,
+                    p_items jsonb) → jsonb {id}
+
+En las de actualizar, omitir `p_items` edita solo la cabecera; pasarlo reemplaza
+todas las líneas y sus movimientos de stock.
+
+- limpiar_idempotency_keys(p_dias int DEFAULT 7) → int
+  Borra claves de idempotencia más antiguas que `p_dias`. Llamar periódicamente.
+
+Ninguna es ejecutable por el rol `anon`.
+*/
 
 -- Database Enumerated Types
 
