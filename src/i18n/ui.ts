@@ -291,6 +291,7 @@ const es: Dict = {
 
   // API
   "api.demoUnavailable": "No disponible en modo demo",
+  "api.unauthorized": "Sesion no valida o caducada. Vuelve a iniciar sesion.",
 };
 
 const en: Dict = {
@@ -571,6 +572,7 @@ const en: Dict = {
 
   // API
   "api.demoUnavailable": "Not available in demo mode",
+  "api.unauthorized": "Invalid or expired session. Please sign in again.",
 };
 
 export const ui: Record<Lang, Dict> = { es, en };

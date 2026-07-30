@@ -7,6 +7,9 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "check": "astro check",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "api:key": "node scripts/create-api-key.mjs"
   },
   "dependencies": {
@@ -21,5 +24,8 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
   }
 }

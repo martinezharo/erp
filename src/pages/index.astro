@@ -13,16 +13,9 @@ let projects: any[] = [];
 if (isDemoMode) {
 	projects = mockProjects.map((p) => ({ id: p.id, nombre: p.nombre }));
 } else {
-	const { cookies } = Astro;
-	const supabase = getAuthenticatedSupabase(cookies);
-
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
-
-	if (!user) {
-		return Astro.redirect("/login");
-	}
+	// The middleware has already validated the session and rejected the request
+	// if there wasn't one, so this client is known to be acting as a real user.
+	const supabase = Astro.locals.supabase ?? getAuthenticatedSupabase(Astro.cookies);
 
 	const { data } = await supabase
 		.from("proyectos")

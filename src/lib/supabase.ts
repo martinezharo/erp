@@ -23,20 +23,28 @@ export const supabase = isDemoMode
     ? (null as any)
     : createClient(supabaseUrl, supabasePublicKey);
 
+/**
+ * A Supabase client that acts as the logged-in user.
+ *
+ * The token travels as an `Authorization` header rather than through
+ * `setSession`, which is asynchronous: the previous code did not await it, so a
+ * query issued straight afterwards could still race the session being applied
+ * and run as `anon` instead of as the user. A header is applied at construction
+ * time and cannot race.
+ *
+ * This only *presents* a token; it does not verify one. Nothing here is an
+ * authentication check — the middleware validates the session before any route
+ * gets to use this client.
+ */
 export const getAuthenticatedSupabase = (cookies: any) => {
     if (isDemoMode) return null as any;
 
     const accessToken = cookies.get("sb-access-token")?.value;
-    const refreshToken = cookies.get("sb-refresh-token")?.value;
 
-    const client = createClient(supabaseUrl, supabasePublicKey);
-
-    if (accessToken && refreshToken) {
-        client.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-        });
-    }
-
-    return client;
+    return createClient(supabaseUrl, supabasePublicKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        ...(accessToken
+            ? { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
+            : {}),
+    });
 };
