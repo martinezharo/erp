@@ -18,10 +18,11 @@ antes de tener credenciales. No expone ningún dato.
 
 ### 1. Ejecutar el SQL
 
-En el editor SQL de Supabase, después de `structure.sql`:
+En el editor SQL de Supabase, después de `db-structure/01-schema.sql` y
+`db-structure/02-rls.sql`:
 
 ```
-sql/agent-api.sql
+db-structure/03-agent-api.sql
 ```
 
 Crea las tablas `api_keys` e `idempotency_keys` y las funciones transaccionales

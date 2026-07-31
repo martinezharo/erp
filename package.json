@@ -1,31 +1,39 @@
 {
-  "name": "erp",
-  "type": "module",
-  "version": "0.0.1",
-  "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro",
-    "check": "astro check",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "api:key": "node scripts/create-api-key.mjs"
-  },
-  "dependencies": {
-    "@astrojs/check": "^0.9.6",
-    "@astrojs/cloudflare": "^12.6.12",
-    "@astrojs/node": "^9.5.3",
-    "@supabase/supabase-js": "^2.95.3",
-    "@tailwindcss/vite": "^4.1.18",
-    "astro": "^5.17.1",
-    "chart.js": "^4.5.1",
-    "nanostores": "^1.1.0",
-    "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "vitest": "^4.1.10"
-  }
+    "name": "erp",
+    "type": "module",
+    "version": "0.0.1",
+    "scripts": {
+        "dev": "astro dev",
+        "build": "astro build",
+        "preview": "astro preview",
+        "astro": "astro",
+        "check": "astro check",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "api:key": "node scripts/create-api-key.mjs",
+        "test:rls": "vitest run --config vitest.rls.config.ts",
+        "prepare": "simple-git-hooks"
+    },
+    "dependencies": {
+        "@astrojs/check": "^0.9.6",
+        "@astrojs/cloudflare": "^12.6.12",
+        "@astrojs/node": "^9.5.3",
+        "@supabase/supabase-js": "^2.95.3",
+        "@tailwindcss/vite": "^4.1.18",
+        "astro": "^5.17.1",
+        "chart.js": "^4.5.1",
+        "nanostores": "^1.1.0",
+        "tailwindcss": "^4.1.18",
+        "typescript": "^5.9.3",
+        "zod": "^4.4.3"
+    },
+    "devDependencies": {
+        "vitest": "^4.1.10",
+        "@types/pg": "^8.20.0",
+        "pg": "^8.22.0",
+        "simple-git-hooks": "^2.13.1"
+    },
+    "simple-git-hooks": {
+        "pre-push": "npm run check && npm test"
+    }
 }

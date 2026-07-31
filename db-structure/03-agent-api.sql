@@ -349,8 +349,18 @@ $$;
 -- Logged-in users reach these through the web UI (role `authenticated`) and API
 -- keys reach them through the service role. Nothing should be callable by an
 -- unauthenticated caller.
-REVOKE EXECUTE ON FUNCTION public.crear_venta       FROM anon;
-REVOKE EXECUTE ON FUNCTION public.actualizar_venta  FROM anon;
-REVOKE EXECUTE ON FUNCTION public.crear_compra      FROM anon;
-REVOKE EXECUTE ON FUNCTION public.actualizar_compra FROM anon;
-REVOKE EXECUTE ON FUNCTION public.limpiar_idempotency_keys FROM anon, authenticated;
+--
+-- Revoking from `anon` by name is not enough: Postgres grants EXECUTE to PUBLIC
+-- on every new function, and `anon` inherits it from there, so the grant has to
+-- be taken from PUBLIC and handed back deliberately.
+REVOKE EXECUTE ON FUNCTION public.crear_venta       FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.actualizar_venta  FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.crear_compra      FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.actualizar_compra FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.limpiar_idempotency_keys FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.crear_venta       TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.actualizar_venta  TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.crear_compra      TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.actualizar_compra TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.limpiar_idempotency_keys TO service_role;

@@ -70,9 +70,31 @@ OlivERP features an automatic **Demo Mode**. This allows anyone to explore the f
    has replaced it with the publishable key, which can be rotated independently.
 
 4. **Initialize the Database**:
-   Run the SQL provided in `structure.sql` in your Supabase SQL Editor to create the necessary tables, views, and triggers.
+   Run the files in `db-structure/` in your Supabase SQL Editor, **in order**:
 
-   To also enable the automation API, run `sql/agent-api.sql` afterwards and follow [docs/API.md](./docs/API.md).
+   | File | What it creates |
+   | --- | --- |
+   | `01-schema.sql` | Tables, enums, stock triggers, reporting views |
+   | `02-rls.sql` | Project membership and the row level security policies |
+   | `03-agent-api.sql` | API keys, idempotency and the transactional RPCs — see [docs/API.md](./docs/API.md) |
+
+   Then give yourself access to a project. Projects are deliberately not
+   creatable from the browser: a project and its first membership row have to
+   appear together, and the UI cannot do two writes atomically. Create both with
+   the service role:
+
+   ```sql
+   WITH p AS (
+     INSERT INTO proyectos (nombre) VALUES ('My project') RETURNING id
+   )
+   INSERT INTO proyecto_usuarios (proyecto_id, user_id, rol)
+   SELECT p.id, '<your auth.users uuid>', 'admin' FROM p;
+   ```
+
+   **Upgrading an existing database**: `02-rls.sql` turns row level security on,
+   and a user with no membership row sees nothing at all. Backfill
+   `proyecto_usuarios` for every existing project *before* running it, or the
+   dashboards go blank.
 
 5. **Start Development Server**:
    ```bash

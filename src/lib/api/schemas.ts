@@ -6,7 +6,7 @@ import { z } from "zod";
  * The enum tuples below are the single source of truth shared by validation and
  * the OpenAPI document, so the accepted values quoted in an error message can
  * never drift from the ones the database actually takes. They mirror the
- * Postgres enums declared in `structure.sql`.
+ * Postgres enums declared in `db-structure/01-schema.sql`.
  */
 export const ESTADOS_VENTA = ["pendiente", "enviada", "devuelta", "reembolsada"] as const;
 export const ESTADOS_COMPRA = ["pendiente", "recibida", "cancelada"] as const;
