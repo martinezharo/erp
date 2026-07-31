@@ -1,6 +1,16 @@
 import { defineMiddleware } from "astro/middleware";
-import { isDemoMode } from "./lib/supabase";
+import { getAuthenticatedSupabase, isDemoMode } from "./lib/supabase";
+import { routePolicy } from "./lib/auth/routes";
 import { getLangFromHeader, getLocale, useTranslations } from "./i18n/utils";
+
+const SESSION_COOKIES = ["sb-access-token", "sb-refresh-token"] as const;
+
+function unauthorizedJson(message: string): Response {
+    return new Response(JSON.stringify({ error: message }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+    });
+}
 
 export const onRequest = defineMiddleware(async ({ cookies, redirect, request, locals }, next) => {
     // Resolve language from the browser's Accept-Language header. Done first so
@@ -15,29 +25,32 @@ export const onRequest = defineMiddleware(async ({ cookies, redirect, request, l
         return next();
     }
 
-    const accessToken = cookies.get("sb-access-token");
-    const refreshToken = cookies.get("sb-refresh-token");
-
-    // Define public routes that don't require authentication
-    const publicRoutes = ["/login", "/api/auth/signin"];
-    const url = new URL(request.url);
-
-    if (publicRoutes.includes(url.pathname)) {
+    const policy = routePolicy(new URL(request.url).pathname);
+    if (policy === "public" || policy === "self_authenticated") {
         return next();
     }
 
-    // The machine-facing API authenticates itself: an API key travels in a
-    // header, not in the session cookies checked below. Redirecting a
-    // programmatic caller to an HTML login page would turn a clear 401 into a
-    // confusing 200, so these routes always resolve their own auth and return
-    // JSON errors.
-    if (url.pathname.startsWith("/api/v1/")) {
-        return next();
-    }
+    // The session is *validated*, not merely detected. Checking that the cookies
+    // exist would let anyone through by sending two cookies of their own
+    // choosing, leaving row-level security as the only thing between a forged
+    // request and the books.
+    const supabase = getAuthenticatedSupabase(cookies);
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!accessToken || !refreshToken) {
+    if (!user) {
+        if (policy === "session_json") {
+            return unauthorizedJson(locals.t("api.unauthorized"));
+        }
+        // Clear the rejected cookies so a stale or tampered session does not
+        // bounce the browser between /login and the page forever.
+        for (const name of SESSION_COOKIES) cookies.delete(name, { path: "/" });
         return redirect("/login");
     }
+
+    // Handed to pages and routes so a validated session is not re-fetched once
+    // per component.
+    locals.user = user;
+    locals.supabase = supabase;
 
     return next();
 });
