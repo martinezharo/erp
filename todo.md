@@ -17,6 +17,15 @@ RLS, the RPC/trigger tests, the VAT arithmetic and the pre-push hook are done
       `schemas.ts`. The database side of the VAT arithmetic is now covered by
       `tests/rls/rpc-transactions.test.ts`; what the API hands back after
       rounding is not.
+- [ ] **Nothing notices when production drifts from `db-structure/`.** A policy
+      called `Solo_Yo_Acceso_Total`, added by hand in the dashboard and absent
+      from this repository, had been granting one hardcoded email full access to
+      all eight business tables. It surfaced only because its predicate appeared
+      in a query plan being read for another reason; it is dropped now
+      (`.sb-migrations/20260801_drop_hardcoded_email_bypass_policy.sql`). A check
+      that compares `pg_policies` against the policies in `02-rls.sql` would have
+      caught it the day it appeared.
+
 - [ ] **A policy is a query plan too.** The RLS suite proved the policies added
       in PR #3 were *correct* and said nothing about what they cost, so the
       stock page timed out in production against a real project's data (fixed by
