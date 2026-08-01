@@ -79,6 +79,36 @@ export class ApiError extends Error {
     }
 }
 
+/** Converts a ConvexError raised by the domain layer into the public API shape. */
+export function fromConvexError(error: unknown): ApiError | null {
+    const data = (error as { data?: unknown } | null)?.data;
+    const candidate = data && typeof data === "object"
+        ? data as { code?: unknown; message?: unknown }
+        : null;
+    const rawCode = candidate?.code;
+    const message = candidate?.message;
+    const knownCodes: ApiErrorCode[] = [
+        "validation_error",
+        "unauthorized",
+        "forbidden",
+        "not_found",
+        "conflict",
+        "idempotency_mismatch",
+        "demo_mode",
+        "not_configured",
+        "internal_error",
+    ];
+
+    if (typeof rawCode === "string" && typeof message === "string") {
+        const code = knownCodes.includes(rawCode as ApiErrorCode)
+            ? rawCode as ApiErrorCode
+            : "internal_error";
+        return new ApiError(code, message);
+    }
+
+    return null;
+}
+
 /**
  * Turns a Zod failure into per-field details. Paths are dotted so an agent can
  * map them straight back onto the JSON body it sent (`items.0.unidades`).

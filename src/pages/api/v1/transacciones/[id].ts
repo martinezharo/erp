@@ -1,10 +1,9 @@
 import type { APIRoute } from "astro";
-import { assertProjectAccess, type Principal } from "../../../../lib/api/auth";
-import { ApiError, fromPostgresError } from "../../../../lib/api/errors";
+import { requireBackend, type Principal } from "../../../../lib/api/auth";
+import { ApiError } from "../../../../lib/api/errors";
 import { apiHandler, json, parseBody } from "../../../../lib/api/handler";
 import { actualizarTransaccionSchema } from "../../../../lib/api/schemas";
 import { serializeTransaccion } from "../../../../lib/api/serializers";
-import { TRANSACCION_SELECT } from "../transacciones";
 
 function parseId(raw: string | undefined): number {
     const id = Number(raw);
@@ -15,16 +14,8 @@ function parseId(raw: string | undefined): number {
 }
 
 async function fetchTransaccion(principal: Principal, id: number) {
-    const { data, error } = await principal.supabase
-        .from("otros_ingresos_gastos")
-        .select(TRANSACCION_SELECT)
-        .eq("id", id)
-        .maybeSingle();
-
-    if (error) throw new ApiError("internal_error", error.message);
+    const data = await requireBackend(principal).getTransaction(id);
     if (!data) throw new ApiError("not_found", `Transaccion ${id} no encontrada.`);
-
-    assertProjectAccess(principal, (data as { proyecto_id: number }).proyecto_id);
     return data;
 }
 
@@ -41,15 +32,15 @@ export const PATCH: APIRoute = (context) =>
 
         await fetchTransaccion(principal, id);
 
-        const { data, error } = await principal.supabase
-            .from("otros_ingresos_gastos")
-            .update(body)
-            .eq("id", id)
-            .select(TRANSACCION_SELECT)
-            .single();
-
-        if (error) throw fromPostgresError(error);
-        return json({ data: serializeTransaccion(data) });
+        await requireBackend(principal).updateTransaction(id, {
+            type: body.tipo,
+            concept: body.concepto,
+            description: body.descripcion,
+            amount: body.importe,
+            vatRate: body.porcentaje_iva,
+            date: body.fecha,
+        });
+        return json({ data: serializeTransaccion(await fetchTransaccion(principal, id)) });
     });
 
 export const DELETE: APIRoute = (context) =>
@@ -57,11 +48,6 @@ export const DELETE: APIRoute = (context) =>
         const id = parseId(context.params.id);
         await fetchTransaccion(principal, id);
 
-        const { error } = await principal.supabase
-            .from("otros_ingresos_gastos")
-            .delete()
-            .eq("id", id);
-
-        if (error) throw fromPostgresError(error);
+        await requireBackend(principal).deleteTransaction(id);
         return json({ data: { id, borrada: true } });
     });

@@ -16,56 +16,22 @@ contract before it has credentials. It does not expose any data.
 
 ## Getting started
 
-### 1. Run the SQL
+### 1. Configure the Convex bridge
 
-In the Supabase SQL editor, after `db-structure/01-schema.sql` and
-`db-structure/02-rls.sql`:
-
-```
-db-structure/03-agent-api.sql
-```
-
-This creates the `api_keys` and `idempotency_keys` tables and the transactional
-functions `crear_venta`, `actualizar_venta`, `crear_compra`, and
-`actualizar_compra`.
-
-### 2. Configure the server secret
-
-Requests authenticated with an API key do not have a Supabase user, so the
-server needs a Supabase **secret key**:
+Requests authenticated with an ERP API key are resolved by the Astro server and
+authorized in Convex. Configure the same random value in Convex and the Astro
+deployment:
 
 ```env
-SUPABASE_SECRET_KEY=sb_secret_...
+CONVEX_URL=https://your-deployment.convex.cloud
+CONVEX_BRIDGE_SECRET=long-random-server-secret
 ```
 
-Create it in the Supabase dashboard under **Settings → API Keys → Publishable
-and secret API keys**. If the project is old, you will see a *Create new API
-keys* button: creating them is safe and does not break anything, as they are
-added alongside your existing keys.
+`CONVEX_BRIDGE_SECRET` is server-only. Do not prefix it with `PUBLIC_` or put it
+in a browser bundle. The existing Supabase public key is still required for the
+login/session bridge.
 
-Do **not** use the `PUBLIC_` prefix, so Astro never includes it in the client
-bundle. On Cloudflare, configure it as a secret (`wrangler secret put
-SUPABASE_SECRET_KEY`), not as a plain-text variable.
-
-> **About legacy keys.** The `service_role` key still works
-> (`SUPABASE_SERVICE_ROLE_KEY` is accepted as an alternative), but Supabase has
-> replaced it with secret keys and will only support it until the end of 2026.
-> It is worth migrating now: `anon`/`service_role` keys are derived from the
-> project's JWT secret, so they cannot be rotated without affecting everything
-> else, while the new keys can be created, named, and revoked independently. A
-> secret key also **returns 401 when used from a browser** (Supabase detects this
-> through the `User-Agent`), providing a safety net that `service_role` did not
-> have.
->
-> On the client side, the equivalent is the publishable key: define
-> `PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...`. It takes precedence over
-> `PUBLIC_SUPABASE_ANON_KEY`, which is still accepted.
->
-> Mind the terminology: the *secret key* belongs to Supabase and stays on the
-> server; the *API keys* (`erp_sk_...`) belong to this ERP and are distributed to
-> agents. They are not the same thing.
-
-### 3. Create an API key
+### 2. Create an API key
 
 ```bash
 pnpm api:key --nombre "n8n stock" --proyecto 1 --scopes read,write
@@ -80,12 +46,9 @@ Options:
 | `--scopes`   | `read`, `write`, or `read,write`. Defaults to `read`.            |
 | `--expira`   | Expiration date (`YYYY-MM-DD`). Does not expire by default.      |
 
-The key is shown **only once**: only its SHA-256 hash is stored in the database.
-If it is lost, create another key and revoke the previous one:
-
-```sql
-UPDATE api_keys SET activa = false WHERE nombre = 'n8n stock';
-```
+The key is shown **only once**: only its SHA-256 hash is stored in Convex. API
+keys can be inspected or deactivated from the Convex dashboard while the
+management UI is being completed.
 
 ---
 
@@ -98,8 +61,9 @@ curl -H "Authorization: Bearer erp_sk_..." https://your-erp/api/v1/proyectos
 `X-API-Key: erp_sk_...` is also accepted and is the default header sent by
 several automation tools.
 
-The web interface continues to work with its cookie session; the same endpoints
-support both types of caller.
+The web interface continues to work with its Supabase cookie session; the same
+endpoints support both types of caller. Supabase is no longer the ERP data
+store.
 
 ### Permissions
 
@@ -200,11 +164,8 @@ Repeating this call returns the original response with the
 A good value is the order ID from the source system, which is naturally unique
 and stable across retries.
 
-Stored keys can be purged periodically:
-
-```sql
-SELECT limpiar_idempotency_keys(7); -- deletes keys older than 7 days
-```
+The Convex idempotency ledger can be inspected and cleaned from the Convex
+dashboard; the migration intentionally starts it empty.
 
 ---
 
@@ -246,7 +207,7 @@ allowing a model to correct the call instead of retrying it unchanged.
 | `conflict`             | 409  | A request with the same key is still in progress.   |
 | `idempotency_mismatch` | 422  | The key was reused with a different body.           |
 | `demo_mode`            | 403  | The deployment is running in demo mode.             |
-| `not_configured`       | 503  | `SUPABASE_SECRET_KEY` is missing on the server.      |
+| `not_configured`       | 503  | `CONVEX_URL` or `CONVEX_BRIDGE_SECRET` is missing.  |
 | `internal_error`       | 500  | Server failure.                                     |
 
 ---

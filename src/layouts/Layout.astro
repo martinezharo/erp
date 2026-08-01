@@ -14,6 +14,7 @@ interface Props {
 const { title, description = "OlivERP - Management System" } = Astro.props;
 const currentPath = Astro.url.pathname;
 const { lang, locale, t } = Astro.locals;
+const hasWorkspaceSession = isDemoMode || Boolean(Astro.locals.user);
 ---
 
 <!DOCTYPE html>
@@ -70,12 +71,16 @@ const { lang, locale, t } = Astro.locals;
 					</div>
 
 					<div class="flex items-center gap-6">
-						<div class="w-40 md:w-64">
-							<ProjectSelector />
-						</div>
+						{
+							hasWorkspaceSession && (
+								<div class="w-40 md:w-64">
+									<ProjectSelector />
+								</div>
+							)
+						}
 
 						{
-							!isDemoMode && (
+							hasWorkspaceSession && !isDemoMode && (
 								<form action="/api/auth/signout" method="post">
 									<button
 										type="submit"

@@ -1,6 +1,5 @@
 import type { APIRoute } from "astro";
 import { resolveProjectId } from "../../../lib/api/auth";
-import { ApiError, fromPostgresError } from "../../../lib/api/errors";
 import { apiHandler, json, parseBody, parseQuery, withIdempotency } from "../../../lib/api/handler";
 import { crearTransaccionSchema, filtrosTransaccionesSchema } from "../../../lib/api/schemas";
 import { paginated, serializeTransaccion } from "../../../lib/api/serializers";
@@ -17,20 +16,14 @@ export const GET: APIRoute = (context) =>
         const filtros = parseQuery(context.url, filtrosTransaccionesSchema);
         const projectId = resolveProjectId(principal, filtros.proyecto_id);
 
-        let query = principal.supabase
-            .from("otros_ingresos_gastos")
-            .select(TRANSACCION_SELECT, { count: "exact" })
-            .eq("proyecto_id", projectId)
-            .order("fecha", { ascending: false })
-            .order("id", { ascending: false });
-
-        if (filtros.desde) query = query.gte("fecha", filtros.desde);
-        if (filtros.hasta) query = query.lte("fecha", filtros.hasta);
-        if (filtros.tipo) query = query.eq("tipo", filtros.tipo);
-
-        const from = (filtros.page - 1) * filtros.page_size;
-        const { data, count, error } = await query.range(from, from + filtros.page_size - 1);
-        if (error) throw new ApiError("internal_error", error.message);
+        const { data, count } = await principal.backend!.listTransactions({
+            projectId,
+            page: filtros.page,
+            pageSize: filtros.page_size,
+            fromDate: filtros.desde,
+            toDate: filtros.hasta,
+            type: filtros.tipo,
+        });
 
         return json(
             paginated(
@@ -53,21 +46,16 @@ export const POST: APIRoute = (context) =>
         const projectId = resolveProjectId(principal, body.proyecto_id);
 
         return withIdempotency(context, principal, "POST /api/v1/transacciones", body, async () => {
-            const { data, error } = await principal.supabase
-                .from("otros_ingresos_gastos")
-                .insert({
-                    proyecto_id: projectId,
-                    tipo: body.tipo,
-                    concepto: body.concepto,
-                    descripcion: body.descripcion ?? null,
-                    importe: body.importe,
-                    porcentaje_iva: body.porcentaje_iva,
-                    fecha: body.fecha,
-                })
-                .select(TRANSACCION_SELECT)
-                .single();
-
-            if (error) throw fromPostgresError(error);
+            const id = await principal.backend!.createTransaction({
+                projectId,
+                type: body.tipo,
+                concept: body.concepto,
+                description: body.descripcion,
+                amount: body.importe,
+                vatRate: body.porcentaje_iva,
+                date: body.fecha,
+            });
+            const data = await principal.backend!.getTransaction(id);
             return json({ data: serializeTransaccion(data) }, 201);
         });
     });

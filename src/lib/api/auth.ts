@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { APIContext } from "astro";
+import { createBackend, type BackendClient } from "../convex";
 import { isDemoMode } from "../supabase";
 import {
     getEnv,
@@ -13,11 +14,9 @@ import { extractApiKey, hashApiKey, type Scope } from "./keys";
 /**
  * Who is making the request.
  *
- * Two kinds of caller reach the v1 API. A browser session (the ERP's own UI,
- * authenticated by the Supabase cookies the middleware already handles) has
- * access to every project. An API key is the machine path: it carries explicit
- * scopes and is usually pinned to one project, so an agent given a key for
- * "Proyecto A" cannot touch "Proyecto B" even if it asks.
+ * Convex is now the data and authorization layer. Supabase is kept in this
+ * module only as the password/session provider until the existing users have
+ * been moved to a JWT provider understood by Convex.
  */
 export interface Principal {
     kind: "api_key" | "session";
@@ -25,13 +24,27 @@ export interface Principal {
     /** Pinned project, or null when the caller may act on any project. */
     projectId: number | null;
     apiKeyId: string | null;
-    supabase: SupabaseClient;
+    backend?: BackendClient;
+    /** Compatibility field for the unit-test seam and auth-only fallback. */
+    supabase?: SupabaseClient;
+}
+
+function hasConvexDeployment(locals: App.Locals): boolean {
+    return Boolean(
+        getEnv(
+            locals,
+            "CONVEX_APP_URL",
+            "CONVEX_PRODUCTION_URL",
+            "CONVEX_URL",
+            "PUBLIC_CONVEX_URL",
+        ),
+    );
 }
 
 /**
- * Privileged client, used only for API-key requests. Those callers have no
- * Supabase user, so there is no session to act under; the scope and project
- * checks in this module are what stands in for row-level security.
+ * Privileged Supabase client used only by the pre-Convex compatibility path.
+ * It remains available for local tests and for a deployment that has not yet
+ * received CONVEX_URL; production with CONVEX_URL never uses it for data.
  */
 function createSecretClient(locals: App.Locals): SupabaseClient {
     const url = getEnv(locals, ...SUPABASE_URL_VARS);
@@ -42,7 +55,7 @@ function createSecretClient(locals: App.Locals): SupabaseClient {
             "not_configured",
             "La autenticacion por API key no esta configurada en este despliegue.",
             {
-                hint: "Define SUPABASE_SECRET_KEY (sb_secret_...) como secreto del servidor, nunca con prefijo PUBLIC_.",
+                hint: "Define CONVEX_URL y CONVEX_BRIDGE_SECRET como secretos del servidor.",
             },
         );
     }
@@ -74,10 +87,9 @@ function sessionClient(context: APIContext): SupabaseClient {
     return client;
 }
 
-/** Only touch the database for last-used bookkeeping once a minute per key. */
 const LAST_USED_THROTTLE_MS = 60_000;
 
-async function resolveApiKey(context: APIContext, rawKey: string): Promise<Principal> {
+async function resolveLegacyApiKey(context: APIContext, rawKey: string): Promise<Principal> {
     const supabase = createSecretClient(context.locals);
     const keyHash = await hashApiKey(rawKey);
 
@@ -91,8 +103,6 @@ async function resolveApiKey(context: APIContext, rawKey: string): Promise<Princ
         throw new ApiError("internal_error", `No se pudo validar la API key: ${error.message}`);
     }
 
-    // Unknown, revoked and expired keys all get the same answer on purpose:
-    // telling a caller which one it is leaks whether a key ever existed.
     if (!apiKey || !apiKey.activa) {
         throw new ApiError("unauthorized", "API key invalida o revocada.");
     }
@@ -118,6 +128,38 @@ async function resolveApiKey(context: APIContext, rawKey: string): Promise<Princ
     };
 }
 
+async function resolveConvexApiKey(context: APIContext, rawKey: string): Promise<Principal> {
+    const keyHash = await hashApiKey(rawKey);
+    const lookup = createBackend(context.locals, { kind: "api_key" });
+    const apiKey = await lookup.apiKeyByHash(keyHash);
+
+    // Unknown, revoked and expired keys intentionally share one response.
+    if (!apiKey || !apiKey.activa) {
+        throw new ApiError("unauthorized", "API key invalida o revocada.");
+    }
+
+    if (apiKey.expira_en && new Date(apiKey.expira_en).getTime() < Date.now()) {
+        throw new ApiError("unauthorized", "API key invalida o revocada.");
+    }
+
+    const lastUsed = apiKey.ultimo_uso_en ? new Date(apiKey.ultimo_uso_en).getTime() : 0;
+    if (Date.now() - lastUsed > LAST_USED_THROTTLE_MS) {
+        await lookup.touchApiKey(apiKey.id, new Date().toISOString());
+    }
+
+    return {
+        kind: "api_key",
+        scopes: apiKey.scopes,
+        projectId: apiKey.proyecto_id,
+        apiKeyId: apiKey.id,
+        backend: createBackend(context.locals, {
+            kind: "api_key",
+            ...(apiKey.proyecto_id !== null ? { projectLegacyId: apiKey.proyecto_id } : {}),
+            apiKeyId: apiKey.id,
+        }),
+    };
+}
+
 async function resolveSession(context: APIContext): Promise<Principal> {
     const supabase = sessionClient(context);
     const { data: { user } } = await supabase.auth.getUser();
@@ -126,6 +168,16 @@ async function resolveSession(context: APIContext): Promise<Principal> {
         throw new ApiError("unauthorized", "Se requiere autenticacion.", {
             hint: "Envia 'Authorization: Bearer erp_sk_...' o inicia sesion en la interfaz web.",
         });
+    }
+
+    if (hasConvexDeployment(context.locals)) {
+        return {
+            kind: "session",
+            scopes: ["read", "write"],
+            projectId: null,
+            apiKeyId: null,
+            backend: createBackend(context.locals, { kind: "session", userId: user.id }),
+        };
     }
 
     return {
@@ -140,13 +192,15 @@ async function resolveSession(context: APIContext): Promise<Principal> {
 export async function resolvePrincipal(context: APIContext): Promise<Principal> {
     if (isDemoMode) {
         throw new ApiError("demo_mode", "La API no esta disponible en modo demo.", {
-            hint: "Configura PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_PUBLISHABLE_KEY para salir del modo demo.",
+            hint: "Configura el proveedor de autenticacion y Convex para salir del modo demo.",
         });
     }
 
     const rawKey = extractApiKey(context.request);
     if (rawKey) {
-        return resolveApiKey(context, rawKey);
+        return hasConvexDeployment(context.locals)
+            ? resolveConvexApiKey(context, rawKey)
+            : resolveLegacyApiKey(context, rawKey);
     }
 
     return resolveSession(context);
@@ -160,14 +214,6 @@ export function requireScope(principal: Principal, scope: Scope): void {
     }
 }
 
-/**
- * Reconciles the project the caller asked for with the one its key allows.
- *
- * A pinned key may omit `proyecto_id` entirely — the pin supplies it — but if it
- * names a different project the request is refused rather than silently
- * rewritten, so an agent working from a stale id gets told instead of writing
- * to the wrong books.
- */
 export function resolveProjectId(principal: Principal, requested: number | null | undefined): number {
     if (principal.projectId !== null) {
         if (requested != null && requested !== principal.projectId) {
@@ -189,9 +235,16 @@ export function resolveProjectId(principal: Principal, requested: number | null 
     return requested;
 }
 
-/** Refuses a read of a resource that belongs to a project outside the key's pin. */
+/** Convex applies the same check server-side; this remains useful for 404 semantics. */
 export function assertProjectAccess(principal: Principal, projectId: number): void {
     if (principal.projectId !== null && principal.projectId !== projectId) {
         throw new ApiError("not_found", "Recurso no encontrado.");
     }
+}
+
+export function requireBackend(principal: Principal): BackendClient {
+    if (!principal.backend) {
+        throw new ApiError("not_configured", "Convex no esta configurado en este despliegue.");
+    }
+    return principal.backend;
 }

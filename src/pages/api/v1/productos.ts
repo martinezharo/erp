@@ -1,6 +1,5 @@
 import type { APIRoute } from "astro";
 import { resolveProjectId } from "../../../lib/api/auth";
-import { ApiError } from "../../../lib/api/errors";
 import { apiHandler, json, parseBody, parseQuery, withIdempotency } from "../../../lib/api/handler";
 import { crearProductoSchema, paginacionSchema } from "../../../lib/api/schemas";
 import { paginated } from "../../../lib/api/serializers";
@@ -18,17 +17,12 @@ export const GET: APIRoute = (context) =>
         const { page, page_size, proyecto_id, buscar } = parseQuery(context.url, listSchema);
         const projectId = resolveProjectId(principal, proyecto_id);
 
-        let query = principal.supabase
-            .from("productos")
-            .select("id, proyecto_id, nombre", { count: "exact" })
-            .eq("proyecto_id", projectId)
-            .order("nombre");
-
-        if (buscar) query = query.ilike("nombre", `%${buscar}%`);
-
-        const from = (page - 1) * page_size;
-        const { data, count, error } = await query.range(from, from + page_size - 1);
-        if (error) throw new ApiError("internal_error", error.message);
+        const { data, count } = await principal.backend!.listProducts({
+            projectId,
+            page,
+            pageSize: page_size,
+            search: buscar,
+        });
 
         return json(paginated(data ?? [], count ?? 0, page, page_size));
     });
@@ -40,13 +34,7 @@ export const POST: APIRoute = (context) =>
         const projectId = resolveProjectId(principal, body.proyecto_id);
 
         return withIdempotency(context, principal, "POST /api/v1/productos", body, async () => {
-            const { data, error } = await principal.supabase
-                .from("productos")
-                .insert({ proyecto_id: projectId, nombre: body.nombre })
-                .select("id, proyecto_id, nombre")
-                .single();
-
-            if (error) throw new ApiError("internal_error", error.message);
+            const data = await principal.backend!.createProduct(projectId, body.nombre);
             return json({ data }, 201);
         });
     });

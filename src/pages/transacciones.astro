@@ -6,7 +6,8 @@ import SalesModal from "../components/SalesModal.astro";
 import PurchaseModal from "../components/PurchaseModal.astro";
 import OtherTransactionModal from "../components/OtherTransactionModal.astro";
 import Pagination from "../components/Pagination.astro";
-import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
+import { createBackend } from "../lib/convex";
+import { isDemoMode } from "../lib/supabase";
 import { mockFinanzas, mockProjects } from "../lib/mock-data";
 import type { VistaFinanzasDiarias } from "../types/database";
 
@@ -48,50 +49,25 @@ if (isDemoMode) {
         data = filtered.slice(from, to + 1);
     }
 } else {
-    const supabase = getAuthenticatedSupabase(Astro.cookies);
+    const backend = createBackend(Astro.locals, { kind: "session", userId: Astro.locals.user!.id });
 
     if (!projectId) {
-        const { data: projects } = await supabase
-            .from("proyectos")
-            .select("id")
-            .order("id", { ascending: true })
-            .limit(1);
-
-        if (projects && projects.length > 0) {
-            projectId = projects[0].id;
-        }
+        projectId = (await backend.listProjects())[0]?.id ?? null;
     }
 
     if (projectId) {
-        const {
-            data: transactionsData,
-            error,
-            count,
-        } = await supabase
-            .from("vista_finanzas_diarias")
-            .select("*", { count: "exact" })
-            .eq("proyecto_id", projectId)
-            .order("dia", { ascending: false })
-            .range(from, to);
-
-        if (error) {
-            errorMsg = error.message;
-        } else {
-            data = transactionsData || [];
-            totalCount = count || 0;
+        try {
+            const finance = await backend.listDailyFinances({ projectId });
+            const ordered = finance.sort((a, b) => String(b.dia).localeCompare(String(a.dia)));
+            totalCount = ordered.length;
             totalPages = Math.ceil(totalCount / pageSize);
+            data = ordered.slice(from, to + 1) as unknown as VistaFinanzasDiarias[];
+            const sources = await backend.transactionSources({ projectId });
+            channels = [...new Set(sources.sales.map((sale) => String(sale.canal)).filter(Boolean))].sort();
+            channels = [...channels, "Proveedor", "Manual"];
+        } catch (error) {
+            errorMsg = error instanceof Error ? error.message : "Unknown error";
         }
-
-        const { data: canalRows } = await supabase
-            .from("ventas")
-            .select("canal")
-            .eq("proyecto_id", projectId);
-
-        const canalValues: string[] = (canalRows || [])
-            .map((r: any) => r.canal)
-            .filter((c: any): c is string => typeof c === "string" && c.length > 0);
-        const salesChannels: string[] = Array.from(new Set(canalValues)).sort();
-        channels = [...salesChannels, "Proveedor", "Manual"];
     }
 }
 ---

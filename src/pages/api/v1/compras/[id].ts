@@ -1,10 +1,9 @@
 import type { APIRoute } from "astro";
-import { assertProjectAccess, type Principal } from "../../../../lib/api/auth";
-import { ApiError, fromPostgresError } from "../../../../lib/api/errors";
+import { requireBackend, type Principal } from "../../../../lib/api/auth";
+import { ApiError } from "../../../../lib/api/errors";
 import { apiHandler, json, parseBody } from "../../../../lib/api/handler";
 import { actualizarCompraSchema } from "../../../../lib/api/schemas";
 import { serializeCompra } from "../../../../lib/api/serializers";
-import { COMPRA_SELECT } from "../compras";
 
 function parseId(raw: string | undefined): number {
     const id = Number(raw);
@@ -15,16 +14,8 @@ function parseId(raw: string | undefined): number {
 }
 
 async function fetchCompra(principal: Principal, id: number) {
-    const { data, error } = await principal.supabase
-        .from("compras")
-        .select(COMPRA_SELECT)
-        .eq("id", id)
-        .maybeSingle();
-
-    if (error) throw new ApiError("internal_error", error.message);
+    const data = await requireBackend(principal).getPurchase(id);
     if (!data) throw new ApiError("not_found", `Compra ${id} no encontrada.`);
-
-    assertProjectAccess(principal, (data as { proyecto_id: number }).proyecto_id);
     return data;
 }
 
@@ -43,14 +34,16 @@ export const PATCH: APIRoute = (context) =>
 
         await fetchCompra(principal, id);
 
-        const { error } = await principal.supabase.rpc("actualizar_compra", {
-            p_compra_id: id,
-            p_fecha: body.fecha ?? null,
-            p_estado: body.estado ?? null,
-            p_items: body.items ?? null,
+        await requireBackend(principal).updatePurchase(id, {
+            date: body.fecha,
+            status: body.estado,
+            items: body.items?.map((item) => ({
+                productId: item.producto_id,
+                units: item.unidades,
+                unitPrice: item.precio_unitario,
+                vatRate: item.porcentaje_iva,
+            })),
         });
-
-        if (error) throw fromPostgresError(error);
 
         return json({ data: serializeCompra(await fetchCompra(principal, id)) });
     });

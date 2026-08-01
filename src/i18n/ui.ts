@@ -60,7 +60,7 @@ const es: Dict = {
   // Demo banner
   "demo.title": "Modo Demo",
   "demo.full":
-    "Estás viendo datos de ejemplo. Configura las variables de entorno de Supabase para conectar con datos reales.",
+    "Estás viendo datos de ejemplo. Configura Convex y el proveedor de autenticación para conectar con datos reales.",
   "demo.short": "Datos de ejemplo.",
 
   // Finance labels (shared)
@@ -341,7 +341,7 @@ const en: Dict = {
   // Demo banner
   "demo.title": "Demo Mode",
   "demo.full":
-    "You're viewing sample data. Configure the Supabase environment variables to connect to real data.",
+  "You're viewing sample data. Configure Convex and the authentication provider to connect to real data.",
   "demo.short": "Sample data.",
 
   // Finance labels

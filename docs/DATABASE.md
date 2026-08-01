@@ -1,5 +1,22 @@
 # Database
 
+## Convex is now the application database
+
+The running application stores ERP data in `convex/schema.ts` and implements
+its transactional domain operations in `convex/domain.ts`. Numeric ids and the
+Spanish response fields are retained so the public API and existing UI keep
+their contract. Prices are stored as integer cents internally.
+
+Supabase remains only as the temporary password/session provider. Moving
+password hashes between providers would require an explicit auth migration and
+user re-authentication plan, so it is intentionally outside this data cutover.
+
+For an existing Supabase database, run `pnpm migrate:supabase` with a
+server-side Supabase key. The importer targets `CONVEX_PRODUCTION_URL` (or an
+explicit `--convex-url`) instead of accidentally using a local `CONVEX_URL`,
+preserves relationships and original ids, and can be run again safely. It
+deliberately starts the Convex idempotency ledger empty.
+
 The executable schema lives in `db-structure/` and is loaded in this order:
 
 | File | Contents |

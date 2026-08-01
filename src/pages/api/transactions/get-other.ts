@@ -1,24 +1,20 @@
 import type { APIRoute } from "astro";
-import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
+import { backendError, demoResponse, jsonResponse, sessionBackend, unauthorizedResponse } from "../../../lib/legacy-api";
+import { isDemoMode } from "../../../lib/supabase";
 
-export const GET: APIRoute = async ({ request, cookies, locals }) => {
-    if (isDemoMode) {
-        return new Response(JSON.stringify({ error: locals.t("api.demoUnavailable") }), { status: 403 });
+export const GET: APIRoute = async (context) => {
+    if (isDemoMode) return demoResponse(context);
+    const session = await sessionBackend(context);
+    if (!session) return unauthorizedResponse();
+
+    const id = Number(context.url.searchParams.get("id"));
+    if (!Number.isInteger(id) || id <= 0) return jsonResponse({ error: "Missing id" }, 400);
+
+    try {
+        const data = await session.backend.getTransaction(id);
+        if (!data) return jsonResponse({ error: "Transaction not found" }, 404);
+        return jsonResponse(data);
+    } catch (error) {
+        return backendError(error);
     }
-
-    const supabase = getAuthenticatedSupabase(cookies);
-    const url = new URL(request.url);
-    const id = url.searchParams.get("id");
-
-    if (!id) return new Response(JSON.stringify({ error: "Missing id" }), { status: 400 });
-
-    const { data, error } = await supabase
-        .from("otros_ingresos_gastos")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-
-    return new Response(JSON.stringify(data), { status: 200 });
 };

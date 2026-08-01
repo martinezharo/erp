@@ -1,24 +1,19 @@
 ---
-import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
+import { createBackend } from "../lib/convex";
+import { isDemoMode } from "../lib/supabase";
 import { mockProjects, getProjectNameKey } from "../lib/mock-data";
 
 let projects: any[] | null = null;
+const userId = Astro.locals.user?.id;
 
 if (isDemoMode) {
     projects = mockProjects;
+} else if (userId) {
+    const backend = createBackend(Astro.locals, { kind: "session", userId });
+    projects = await backend.listProjects();
 } else {
-    const supabase = getAuthenticatedSupabase(Astro.cookies);
-
-    const { data, error } = await supabase
-        .from("proyectos")
-        .select("*")
-        .order("id", { ascending: true });
-
-    if (error) {
-        console.error("Error fetching projects:", error);
-    }
-
-    projects = data;
+    // Public pages (for example /login) also use the shared layout.
+    projects = [];
 }
 
 const { t } = Astro.locals;

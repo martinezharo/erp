@@ -1,74 +1,36 @@
 import type { APIRoute } from "astro";
-import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
+import { backendError, demoResponse, jsonResponse, sessionBackend, unauthorizedResponse } from "../../../lib/legacy-api";
+import { isDemoMode } from "../../../lib/supabase";
 
-export const PUT: APIRoute = async ({ request, cookies, locals }) => {
-    if (isDemoMode) {
-        return new Response(JSON.stringify({ error: locals.t("api.demoUnavailable") }), { status: 403 });
-    }
+export const PUT: APIRoute = async (context) => {
+    if (isDemoMode) return demoResponse(context);
+    const session = await sessionBackend(context);
+    if (!session) return unauthorizedResponse();
 
-    const supabase = getAuthenticatedSupabase(cookies);
-    const body = await request.json();
+    try {
+        const body = await context.request.json() as {
+            id?: number;
+            date?: string;
+            channel?: string;
+            projectId?: number;
+            items?: Array<{ productId: number; units: number; price: number; tax?: number }>;
+        };
+        if (!body.id || !body.date || !body.channel || !body.projectId || !body.items?.length) {
+            return jsonResponse({ error: "Missing required fields" }, 400);
+        }
 
-    const { id, date, channel, items, projectId } = body;
-
-    if (!id || !date || !channel || !items || items.length === 0 || !projectId) {
-        return new Response(JSON.stringify({ error: "Missing required fields" }), {
-            status: 400,
+        await session.backend.updateSale(body.id, {
+            date: body.date,
+            channel: body.channel,
+            items: body.items.map((item) => ({
+                productId: item.productId,
+                units: item.units,
+                unitPrice: item.price,
+                vatRate: item.tax ?? 21,
+            })),
         });
+        return jsonResponse({ success: true });
+    } catch (error) {
+        return backendError(error);
     }
-
-    // 1. Update 'ventas'
-    const { error: ventaError } = await supabase
-        .from("ventas")
-        .update({
-            fecha: date,
-            canal: channel,
-            // proyecto_id usually doesn't change, but we can update it if needed
-        })
-        .eq("id", id);
-
-    if (ventaError) {
-        return new Response(JSON.stringify({ error: ventaError.message }), {
-            status: 500,
-        });
-    }
-
-    // 2. Replace 'venta_detalle'
-    // Strategy: Delete all existing details for this sale and insert new ones.
-    // This is simpler than diffing.
-
-    // Delete existing
-    const { error: deleteError } = await supabase
-        .from("venta_detalle")
-        .delete()
-        .eq("venta_id", id);
-
-    if (deleteError) {
-        return new Response(JSON.stringify({ error: "Error clearing old details" }), {
-            status: 500,
-        });
-    }
-
-    // Insert new
-    const detalles = items.map((item: any) => ({
-        venta_id: id,
-        producto_id: item.productId,
-        unidades: item.units,
-        precio_unitario_venta: item.price,
-        porcentaje_iva: item.tax || 21,
-    }));
-
-    const { error: insertError } = await supabase
-        .from("venta_detalle")
-        .insert(detalles);
-
-    if (insertError) {
-        return new Response(JSON.stringify({ error: insertError.message }), {
-            status: 500,
-        });
-    }
-
-    return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-    });
 };

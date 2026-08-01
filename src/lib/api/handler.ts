@@ -1,7 +1,7 @@
 import type { APIContext } from "astro";
 import type { ZodType } from "zod";
 import { resolvePrincipal, requireScope, type Principal } from "./auth";
-import { ApiError, fromZodError } from "./errors";
+import { ApiError, fromConvexError, fromZodError } from "./errors";
 import type { Scope } from "./keys";
 
 export const OPENAPI_PATH = "/api/v1/openapi.json";
@@ -31,6 +31,9 @@ export async function apiHandler(
         if (error instanceof ApiError) {
             return error.toResponse();
         }
+
+        const convexError = fromConvexError(error);
+        if (convexError) return convexError.toResponse();
 
         console.error("[api/v1] unhandled error:", error);
         return new ApiError(
@@ -118,7 +121,14 @@ export async function withIdempotency(
     }
 
     const requestHash = await hashRequest(endpoint, body);
+    if (principal.backend) {
+        return withConvexIdempotency(principal, idempotencyKey, endpoint, requestHash, fn);
+    }
+
     const { supabase } = principal;
+    if (!supabase) {
+        throw new ApiError("not_configured", "No hay un backend de datos configurado.");
+    }
 
     const { error: insertError } = await supabase.from("idempotency_keys").insert({
         idempotency_key: idempotencyKey,
@@ -197,9 +207,66 @@ export async function withIdempotency(
 }
 
 async function releaseKey(principal: Principal, key: string, endpoint: string): Promise<void> {
-    await principal.supabase
-        .from("idempotency_keys")
-        .delete()
-        .eq("idempotency_key", key)
-        .eq("endpoint", endpoint);
+    if (principal.backend) {
+        await principal.backend.releaseIdempotency(key, endpoint);
+        return;
+    }
+
+    if (principal.supabase) {
+        await principal.supabase
+            .from("idempotency_keys")
+            .delete()
+            .eq("idempotency_key", key)
+            .eq("endpoint", endpoint);
+    }
+}
+
+async function withConvexIdempotency(
+    principal: Principal,
+    key: string,
+    endpoint: string,
+    requestHash: string,
+    fn: () => Promise<Response>,
+): Promise<Response> {
+    const backend = principal.backend!;
+    const reservation = await backend.reserveIdempotency(key, endpoint, requestHash);
+
+    if (reservation.status === "mismatch") {
+        throw new ApiError(
+            "idempotency_mismatch",
+            "Esta 'Idempotency-Key' ya se uso con un cuerpo distinto.",
+            { hint: "Usa una clave nueva para cada operacion distinta." },
+        );
+    }
+
+    if (reservation.status === "in_flight") {
+        throw new ApiError(
+            "conflict",
+            "Ya hay una peticion en curso con esta 'Idempotency-Key'.",
+            { hint: "Espera a que termine antes de reintentar." },
+        );
+    }
+
+    if (reservation.status === "replay") {
+        return json(reservation.responseBody, reservation.responseStatus, {
+            "Idempotency-Replayed": "true",
+        });
+    }
+
+    let response: Response;
+    try {
+        response = await fn();
+    } catch (error) {
+        await releaseKey(principal, key, endpoint);
+        throw error;
+    }
+
+    if (!response.ok) {
+        await releaseKey(principal, key, endpoint);
+        return response;
+    }
+
+    const stored = await response.clone().json().catch(() => ({}));
+    await backend.completeIdempotency(key, endpoint, response.status, stored);
+    return response;
 }

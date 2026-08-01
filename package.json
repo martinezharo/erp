@@ -11,6 +11,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "api:key": "node scripts/create-api-key.mjs",
+        "migrate:supabase": "node scripts/migrate-supabase-to-convex.mjs",
         "test:rls": "vitest run --config vitest.rls.config.ts",
         "prepare": "simple-git-hooks"
     },
@@ -22,16 +23,17 @@
         "@tailwindcss/vite": "^4.1.18",
         "astro": "^5.17.1",
         "chart.js": "^4.5.1",
+        "convex": "^1.43.0",
         "nanostores": "^1.1.0",
         "tailwindcss": "^4.1.18",
         "typescript": "^5.9.3",
         "zod": "^4.4.3"
     },
     "devDependencies": {
-        "vitest": "^4.1.10",
         "@types/pg": "^8.20.0",
         "pg": "^8.22.0",
-        "simple-git-hooks": "^2.13.1"
+        "simple-git-hooks": "^2.13.1",
+        "vitest": "^4.1.10"
     },
     "simple-git-hooks": {
         "pre-push": "npm run check && npm test"

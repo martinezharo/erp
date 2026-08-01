@@ -1,67 +1,37 @@
 import type { APIRoute } from "astro";
-import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
+import { backendError, demoResponse, jsonResponse, sessionBackend, unauthorizedResponse } from "../../../lib/legacy-api";
+import { isDemoMode } from "../../../lib/supabase";
 
-export const POST: APIRoute = async ({ request, cookies, locals }) => {
-    if (isDemoMode) {
-        return new Response(JSON.stringify({ error: locals.t("api.demoUnavailable") }), { status: 403 });
-    }
+export const POST: APIRoute = async (context) => {
+    if (isDemoMode) return demoResponse(context);
+    const session = await sessionBackend(context);
+    if (!session) return unauthorizedResponse();
 
-    const supabase = getAuthenticatedSupabase(cookies);
-    const body = await request.json();
+    try {
+        const body = await context.request.json() as {
+            date?: string;
+            channel?: string;
+            projectId?: number;
+            items?: Array<{ productId: number; units: number; price: number; tax?: number }>;
+        };
+        if (!body.date || !body.channel || !body.projectId || !body.items?.length) {
+            return jsonResponse({ error: "Missing required fields" }, 400);
+        }
 
-    const { date, channel, items, projectId } = body;
-
-    console.log("Received Sale Body:", body); // Debug Log
-
-    if (!date || !channel || !items || items.length === 0 || !projectId) {
-        console.error("Missing fields:", { date, channel, itemsLen: items?.length, projectId });
-        return new Response(JSON.stringify({ error: "Missing required fields" }), {
-            status: 400,
+        const id = await session.backend.createSale({
+            projectId: body.projectId,
+            date: body.date,
+            channel: body.channel,
+            status: "enviada",
+            items: body.items.map((item) => ({
+                productId: item.productId,
+                units: item.units,
+                unitPrice: item.price,
+                vatRate: item.tax ?? 21,
+            })),
         });
+        return jsonResponse({ success: true, id });
+    } catch (error) {
+        return backendError(error);
     }
-
-    // 1. Insert into 'ventas'
-    const { data: venta, error: ventaError } = await supabase
-        .from("ventas")
-        .insert({
-            proyecto_id: projectId,
-            fecha: date,
-            canal: channel,
-            estado: "enviada", // Default status
-        })
-        .select()
-        .single();
-
-    if (ventaError) {
-        return new Response(JSON.stringify({ error: ventaError.message }), {
-            status: 500,
-        });
-    }
-
-    // 2. Insert into 'venta_detalle'
-    const detalles = items.map((item: any) => ({
-        venta_id: venta.id,
-        producto_id: item.productId,
-        unidades: item.units,
-        precio_unitario_venta: item.price,
-        porcentaje_iva: item.tax || 21, // Default to 21% if not specified
-    }));
-
-    const { error: detalleError } = await supabase
-        .from("venta_detalle")
-        .insert(detalles);
-
-    if (detalleError) {
-        // Ideally we would rollback the 'venta' insertion here, but Supabase HTTP client doesn't support transactions easily.
-        // We could try to delete the venta.
-        await supabase.from("ventas").delete().eq("id", venta.id);
-
-        return new Response(JSON.stringify({ error: detalleError.message }), {
-            status: 500,
-        });
-    }
-
-    return new Response(JSON.stringify({ success: true, id: venta.id }), {
-        status: 200,
-    });
 };

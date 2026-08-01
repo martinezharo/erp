@@ -1,56 +1,27 @@
 import type { APIRoute } from "astro";
-import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
+import { backendError, demoResponse, jsonResponse, sessionBackend, unauthorizedResponse } from "../../../lib/legacy-api";
+import { isDemoMode } from "../../../lib/supabase";
 
-export const DELETE: APIRoute = async ({ request, cookies, locals }) => {
-    if (isDemoMode) {
-        return new Response(JSON.stringify({ error: locals.t("api.demoUnavailable") }), { status: 403 });
+export const DELETE: APIRoute = async (context) => {
+    if (isDemoMode) return demoResponse(context);
+    const session = await sessionBackend(context);
+    if (!session) return unauthorizedResponse();
+
+    const id = Number(context.url.searchParams.get("id"));
+    const type = context.url.searchParams.get("type");
+    if (!Number.isInteger(id) || id <= 0 || !type) {
+        return jsonResponse({ error: "Missing id or type" }, 400);
     }
 
-    const supabase = getAuthenticatedSupabase(cookies);
-    const url = new URL(request.url);
-    const id = url.searchParams.get("id");
-    const type = url.searchParams.get("type");
+    try {
+        let deleted = false;
+        if (type === "venta") deleted = await session.backend.deleteSale(id);
+        else if (type === "compra") deleted = await session.backend.deletePurchase(id);
+        else if (type === "gasto" || type === "ingreso") deleted = await session.backend.deleteTransaction(id);
+        else return jsonResponse({ error: "Invalid type" }, 400);
 
-    if (!id || !type) {
-        return new Response(JSON.stringify({ error: "Missing id or type" }), {
-            status: 400,
-        });
+        return jsonResponse({ success: deleted });
+    } catch (error) {
+        return backendError(error);
     }
-
-    let table = "";
-    // Map frontend type to database table
-    switch (type) {
-        case "venta":
-            table = "ventas";
-            // Note: Cascade delete should handle venta_detalle if configured in DB. 
-            // If not, we might need to delete details first or rely on FK constraints.
-            // Assuming Supabase foreign keys are set to cascade.
-            break;
-        case "compra":
-            table = "compras";
-            break;
-        case "gasto":
-        case "ingreso":
-            table = "otros_ingresos_gastos";
-            break;
-        default:
-            return new Response(JSON.stringify({ error: "Invalid type" }), {
-                status: 400,
-            });
-    }
-
-    const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq("id", id);
-
-    if (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
-            status: 500,
-        });
-    }
-
-    return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-    });
 };

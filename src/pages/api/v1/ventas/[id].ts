@@ -1,10 +1,9 @@
 import type { APIRoute } from "astro";
-import { assertProjectAccess, type Principal } from "../../../../lib/api/auth";
-import { ApiError, fromPostgresError } from "../../../../lib/api/errors";
+import { requireBackend, type Principal } from "../../../../lib/api/auth";
+import { ApiError } from "../../../../lib/api/errors";
 import { apiHandler, json, parseBody } from "../../../../lib/api/handler";
 import { actualizarVentaSchema } from "../../../../lib/api/schemas";
 import { serializeVenta } from "../../../../lib/api/serializers";
-import { VENTA_SELECT } from "../ventas";
 
 function parseId(raw: string | undefined): number {
     const id = Number(raw);
@@ -15,16 +14,8 @@ function parseId(raw: string | undefined): number {
 }
 
 async function fetchVenta(principal: Principal, id: number) {
-    const { data, error } = await principal.supabase
-        .from("ventas")
-        .select(VENTA_SELECT)
-        .eq("id", id)
-        .maybeSingle();
-
-    if (error) throw new ApiError("internal_error", error.message);
+    const data = await requireBackend(principal).getSale(id);
     if (!data) throw new ApiError("not_found", `Venta ${id} no encontrada.`);
-
-    assertProjectAccess(principal, (data as { proyecto_id: number }).proyecto_id);
     return data;
 }
 
@@ -50,15 +41,17 @@ export const PATCH: APIRoute = (context) =>
         // Resolve first so a key pinned elsewhere gets 404 before anything runs.
         await fetchVenta(principal, id);
 
-        const { error } = await principal.supabase.rpc("actualizar_venta", {
-            p_venta_id: id,
-            p_fecha: body.fecha ?? null,
-            p_canal: body.canal ?? null,
-            p_estado: body.estado ?? null,
-            p_items: body.items ?? null,
+        await requireBackend(principal).updateSale(id, {
+            date: body.fecha,
+            channel: body.canal,
+            status: body.estado,
+            items: body.items?.map((item) => ({
+                productId: item.producto_id,
+                units: item.unidades,
+                unitPrice: item.precio_unitario,
+                vatRate: item.porcentaje_iva,
+            })),
         });
-
-        if (error) throw fromPostgresError(error);
 
         return json({ data: serializeVenta(await fetchVenta(principal, id)) });
     });

@@ -1,43 +1,21 @@
 import type { APIRoute } from "astro";
-import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
+import { backendError, demoResponse, jsonResponse, sessionBackend, unauthorizedResponse } from "../../../lib/legacy-api";
+import { isDemoMode } from "../../../lib/supabase";
 
-export const POST: APIRoute = async ({ request, cookies, locals }) => {
-    if (isDemoMode) {
-        return new Response(JSON.stringify({ error: locals.t("api.demoUnavailable") }), { status: 403 });
-    }
+export const POST: APIRoute = async (context) => {
+    if (isDemoMode) return demoResponse(context);
 
-    const supabase = getAuthenticatedSupabase(cookies);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-    }
+    const session = await sessionBackend(context);
+    if (!session) return unauthorizedResponse();
 
     try {
-        const body = await request.json();
-        const { projectId, name } = body;
-
-        if (!projectId || !name) {
-            return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
+        const body = await context.request.json() as { projectId?: number; name?: string };
+        if (!body.projectId || !body.name?.trim()) {
+            return jsonResponse({ error: "Missing required fields" }, 400);
         }
-
-        const { data, error } = await supabase
-            .from("productos")
-            .insert({
-                proyecto_id: projectId,
-                nombre: name
-            })
-            .select()
-            .single();
-
-        if (error) {
-            throw new Error(error.message);
-        }
-
-        return new Response(JSON.stringify({ success: true, data }), { status: 200 });
-
-    } catch (error: any) {
-        console.error("API Error:", error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+        const data = await session.backend.createProduct(body.projectId, body.name);
+        return jsonResponse({ success: true, data });
+    } catch (error) {
+        return backendError(error);
     }
 };

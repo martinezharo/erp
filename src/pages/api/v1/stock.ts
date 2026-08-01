@@ -1,7 +1,6 @@
 import type { APIRoute } from "astro";
 import { z } from "zod";
 import { resolveProjectId } from "../../../lib/api/auth";
-import { ApiError } from "../../../lib/api/errors";
 import { apiHandler, json, parseQuery } from "../../../lib/api/handler";
 import { paginacionSchema } from "../../../lib/api/schemas";
 import { paginated, serializeStock } from "../../../lib/api/serializers";
@@ -28,22 +27,13 @@ export const GET: APIRoute = (context) =>
         const query = parseQuery(context.url, stockQuerySchema);
         const projectId = resolveProjectId(principal, query.proyecto_id);
 
-        let q = principal.supabase
-            .from("vista_stock_final")
-            .select("*", { count: "exact" })
-            .eq("proyecto_id", projectId)
-            .order("dias_stock_restante", { ascending: true });
-
-        if (query.max_dias_stock !== undefined) {
-            q = q.lte("dias_stock_restante", query.max_dias_stock);
-        }
-        if (query.max_unidades !== undefined) {
-            q = q.lte("stock_actual", query.max_unidades);
-        }
-
-        const from = (query.page - 1) * query.page_size;
-        const { data, count, error } = await q.range(from, from + query.page_size - 1);
-        if (error) throw new ApiError("internal_error", error.message);
+        const { data, count } = await principal.backend!.listStock({
+            projectId,
+            page: query.page,
+            pageSize: query.page_size,
+            maxDays: query.max_dias_stock,
+            maxUnits: query.max_unidades,
+        });
 
         return json(
             paginated((data ?? []).map(serializeStock), count ?? 0, query.page, query.page_size),

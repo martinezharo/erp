@@ -3,7 +3,8 @@ import Layout from "../layouts/Layout.astro";
 import StockTable from "../components/StockTable.astro";
 import ProductModal from "../components/ProductModal.astro";
 import ProductHistoryModal from "../components/ProductHistoryModal.astro";
-import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
+import { createBackend } from "../lib/convex";
+import { isDemoMode } from "../lib/supabase";
 import { mockStock, mockProjects } from "../lib/mock-data";
 import type { VistaStockFinal } from "../types/database";
 
@@ -24,32 +25,19 @@ if (isDemoMode) {
         data = mockStock.filter((s) => s.proyecto_id === projectId);
     }
 } else {
-    const supabase = getAuthenticatedSupabase(Astro.cookies);
+    const backend = createBackend(Astro.locals, { kind: "session", userId: Astro.locals.user!.id });
 
     // If no project ID in URL, fetch the first available project to default to
     if (!projectId) {
-        const { data: projects } = await supabase
-            .from("proyectos")
-            .select("id")
-            .order("id", { ascending: true })
-            .limit(1);
-
-        if (projects && projects.length > 0) {
-            projectId = projects[0].id;
-        }
+        projectId = (await backend.listProjects())[0]?.id ?? null;
     }
 
     // Fetch data if we have a project ID
     if (projectId) {
-        const { data: stockData, error } = await supabase
-            .from("vista_stock_final")
-            .select("*")
-            .eq("proyecto_id", projectId);
-
-        if (error) {
-            errorMsg = error.message;
-        } else {
-            data = stockData || [];
+        try {
+            data = (await backend.listStock({ projectId, page: 1, pageSize: 1000 })).data as unknown as VistaStockFinal[];
+        } catch (error) {
+            errorMsg = error instanceof Error ? error.message : "Unknown error";
         }
     }
 }

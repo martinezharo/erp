@@ -5,7 +5,8 @@ import PurchaseModal from "../components/PurchaseModal.astro";
 import OtherTransactionModal from "../components/OtherTransactionModal.astro";
 import DashboardStats from "../components/DashboardStats.astro";
 import RevenueChart from "../components/RevenueChart.astro";
-import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
+import { createBackend } from "../lib/convex";
+import { isDemoMode } from "../lib/supabase";
 import { mockProjects } from "../lib/mock-data";
 
 let projects: any[] = [];
@@ -13,16 +14,8 @@ let projects: any[] = [];
 if (isDemoMode) {
 	projects = mockProjects.map((p) => ({ id: p.id, nombre: p.nombre }));
 } else {
-	// The middleware has already validated the session and rejected the request
-	// if there wasn't one, so this client is known to be acting as a real user.
-	const supabase = Astro.locals.supabase ?? getAuthenticatedSupabase(Astro.cookies);
-
-	const { data } = await supabase
-		.from("proyectos")
-		.select("id, nombre")
-		.limit(5);
-
-	projects = data || [];
+    const backend = createBackend(Astro.locals, { kind: "session", userId: Astro.locals.user!.id });
+    projects = (await backend.listProjects()).slice(0, 5);
 }
 
 const projectIdParam = Astro.url.searchParams.get("projectId");

@@ -34,4 +34,4 @@ pnpm-debug.log*
 # agents settings
 .claude/
 .agents/
-
+.env.local

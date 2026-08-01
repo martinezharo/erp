@@ -1,64 +1,44 @@
 import type { APIRoute } from "astro";
-import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
+import { backendError, demoResponse, jsonResponse, sessionBackend, unauthorizedResponse } from "../../../lib/legacy-api";
+import { isDemoMode } from "../../../lib/supabase";
 
-export const POST: APIRoute = async ({ request, cookies, locals }) => {
-    return handleSave(request, cookies, "POST", locals);
-};
+export const POST: APIRoute = (context) => handleSave(context, "POST");
+export const PUT: APIRoute = (context) => handleSave(context, "PUT");
 
-export const PUT: APIRoute = async ({ request, cookies, locals }) => {
-    return handleSave(request, cookies, "PUT", locals);
-};
-
-async function handleSave(request: Request, cookies: any, method: string, locals: App.Locals) {
-    if (isDemoMode) {
-        return new Response(JSON.stringify({ error: locals.t("api.demoUnavailable") }), { status: 403 });
-    }
-
-    const supabase = getAuthenticatedSupabase(cookies);
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+async function handleSave(context: Parameters<Extract<APIRoute, (context: any) => any>>[0], method: string) {
+    if (isDemoMode) return demoResponse(context);
+    const session = await sessionBackend(context);
+    if (!session) return unauthorizedResponse();
 
     try {
-        const body = await request.json();
-        const { id, projectId, tipo, fecha, concepto, descripcion, importe, porcentaje_iva } = body;
-
-        if (!projectId || !tipo || !fecha || !concepto || !importe) {
-            return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
-        }
-
-        const payload = {
-            proyecto_id: projectId,
-            tipo,
-            fecha,
-            concepto,
-            descripcion,
-            importe: parseFloat(importe),
-            porcentaje_iva: porcentaje_iva ? parseFloat(porcentaje_iva) : 0
+        const body = await context.request.json() as {
+            id?: number;
+            projectId?: number;
+            tipo?: string;
+            fecha?: string;
+            concepto?: string;
+            descripcion?: string;
+            importe?: number | string;
+            porcentaje_iva?: number | string;
         };
-
-        let result;
-
-        if (method === "PUT" && id) {
-            result = await supabase
-                .from("otros_ingresos_gastos")
-                .update(payload)
-                .eq("id", id)
-                .select()
-                .single();
-        } else {
-            result = await supabase
-                .from("otros_ingresos_gastos")
-                .insert(payload)
-                .select()
-                .single();
+        if (!body.projectId || !body.tipo || !body.fecha || !body.concepto || !body.importe) {
+            return jsonResponse({ error: "Missing required fields" }, 400);
         }
 
-        if (result.error) throw new Error(result.error.message);
+        const values = {
+            type: body.tipo,
+            concept: body.concepto,
+            description: body.descripcion,
+            amount: Number(body.importe),
+            vatRate: body.porcentaje_iva ? Number(body.porcentaje_iva) : 0,
+            date: body.fecha,
+        };
+        const id = method === "PUT" && body.id
+            ? await session.backend.updateTransaction(body.id, values)
+            : await session.backend.createTransaction({ projectId: body.projectId, ...values });
 
-        return new Response(JSON.stringify({ success: true, id: result.data.id }), { status: 200 });
-
-    } catch (e: any) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+        return jsonResponse({ success: true, id });
+    } catch (error) {
+        return backendError(error);
     }
 }

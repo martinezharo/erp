@@ -1,25 +1,18 @@
 ---
-import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
+import { createBackend } from "../lib/convex";
+import { isDemoMode } from "../lib/supabase";
 
 const { t } = Astro.locals;
 
 let concepts: string[] = [];
 
 if (!isDemoMode) {
-    const supabase = getAuthenticatedSupabase(Astro.cookies);
-
-    // Fetch distinct concepts for autocomplete
-    const { data: rawConcepts } = await supabase
-        .from("otros_ingresos_gastos")
-        .select("concepto")
-        .order("concepto");
-
-    // deduplicate
-    concepts = [
-        ...new Set(
-            rawConcepts?.map((c: { concepto: string }) => c.concepto) || []
-        ),
-    ] as string[];
+    const backend = createBackend(Astro.locals, { kind: "session", userId: Astro.locals.user!.id });
+    const projects = await backend.listProjects();
+    const rows = (await Promise.all(
+        projects.map((project) => backend.listTransactions({ projectId: project.id, page: 1, pageSize: 10000 })),
+    )).flatMap((result) => result.data);
+    concepts = [...new Set(rows.map((row) => String(row.concepto)))].sort();
 }
 ---
 

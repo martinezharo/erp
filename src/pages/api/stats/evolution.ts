@@ -1,74 +1,44 @@
-import type { APIRoute } from 'astro';
-import { getAuthenticatedSupabase, isDemoMode } from "../../../lib/supabase";
+import type { APIRoute } from "astro";
 import { getMockEvolution } from "../../../lib/mock-data";
+import { backendError, jsonResponse, sessionBackend, unauthorizedResponse } from "../../../lib/legacy-api";
+import { isDemoMode } from "../../../lib/supabase";
 
-export const GET: APIRoute = async ({ request, cookies }) => {
-  const url = new URL(request.url);
-  const projectId = url.searchParams.get('projectId');
-  const days = parseInt(url.searchParams.get('days') || '30');
+export const GET: APIRoute = async (context) => {
+    const projectId = Number(context.url.searchParams.get("projectId"));
+    const days = Math.max(1, Number.parseInt(context.url.searchParams.get("days") || "30", 10));
 
-  if (!projectId) {
-    return new Response(JSON.stringify({ error: 'Project ID is required' }), {
-      status: 400,
-    });
-  }
-
-  // In demo mode, return mock evolution data
-  if (isDemoMode) {
-    const mockData = getMockEvolution(days);
-    return new Response(JSON.stringify(mockData), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-  }
-
-  const supabase = getAuthenticatedSupabase(cookies);
-
-  // Calculate start date
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  const startDateStr = startDate.toISOString().split('T')[0];
-
-  const { data, error } = await supabase
-    .from('vista_finanzas_diarias')
-    .select('dia, ingresos, urp')
-    .eq('proyecto_id', projectId)
-    .gte('dia', startDateStr)
-    .order('dia', { ascending: true });
-
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-    });
-  }
-
-  // Fill missing dates with 0
-  const filledData = [];
-  const currentDate = new Date(startDate);
-  const endDate = new Date();
-
-  // Create a map for quick lookup
-  const dataMap = new Map<string, { dia: string; ingresos: number; urp: number }>(data.map((item: { dia: string; ingresos: number; urp: number }) => [item.dia, item]));
-
-  while (currentDate <= endDate) {
-    const dateStr = currentDate.toISOString().split('T')[0];
-    const item = dataMap.get(dateStr);
-
-    filledData.push({
-      date: dateStr,
-      ingresos: item ? Number(item.ingresos) : 0,
-      urp: item ? Number(item.urp) : 0,
-    });
-
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return new Response(JSON.stringify(filledData), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json'
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+        return jsonResponse({ error: "Project ID is required" }, 400);
     }
-  });
+
+    if (isDemoMode) return jsonResponse(getMockEvolution(days));
+
+    const session = await sessionBackend(context);
+    if (!session) return unauthorizedResponse();
+
+    try {
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        const startDateStr = startDate.toISOString().split("T")[0];
+        const data = await session.backend.financeEvolution(projectId, startDateStr);
+        const dataMap = new Map(
+            data.map((item) => [String(item.dia), {
+                ingresos: Number(item.ingresos ?? 0),
+                urp: Number(item.urp ?? 0),
+            }]),
+        );
+
+        const filledData: Array<{ date: string; ingresos: number; urp: number }> = [];
+        const currentDate = new Date(startDate);
+        const endDate = new Date();
+        while (currentDate <= endDate) {
+            const date = currentDate.toISOString().split("T")[0];
+            const item = dataMap.get(date);
+            filledData.push({ date, ingresos: item?.ingresos ?? 0, urp: item?.urp ?? 0 });
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        return jsonResponse(filledData);
+    } catch (error) {
+        return backendError(error);
+    }
 };

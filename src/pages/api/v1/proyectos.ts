@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
+import { requireBackend } from "../../../lib/api/auth";
 import { apiHandler, json } from "../../../lib/api/handler";
-import { ApiError } from "../../../lib/api/errors";
 
 /**
  * GET /api/v1/proyectos
@@ -11,17 +11,10 @@ import { ApiError } from "../../../lib/api/errors";
  */
 export const GET: APIRoute = (context) =>
     apiHandler(context, "read", async (principal) => {
-        let query = principal.supabase
-            .from("proyectos")
-            .select("id, nombre, activo")
-            .order("nombre");
-
-        if (principal.projectId !== null) {
-            query = query.eq("id", principal.projectId);
-        }
-
-        const { data, error } = await query;
-        if (error) throw new ApiError("internal_error", error.message);
-
-        return json({ data });
+        const data = await requireBackend(principal).listProjects();
+        return json({
+            data: principal.projectId === null
+                ? data
+                : data.filter((project) => project.id === principal.projectId),
+        });
     });

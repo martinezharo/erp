@@ -1,5 +1,6 @@
 ---
-import { getAuthenticatedSupabase, isDemoMode } from "../lib/supabase";
+import { createBackend } from "../lib/convex";
+import { isDemoMode } from "../lib/supabase";
 import { mockFinanzas } from "../lib/mock-data";
 
 interface Props {
@@ -31,19 +32,8 @@ if (isDemoMode) {
     (f) => f.proyecto_id === projectId && f.dia >= startOfQuarterStr
   );
 } else {
-  const supabase = getAuthenticatedSupabase(Astro.cookies);
-
-  const { data, error } = await supabase
-    .from("vista_finanzas_diarias")
-    .select("*")
-    .eq("proyecto_id", projectId)
-    .gte("dia", startOfQuarterStr);
-
-  if (error) {
-    console.error("Error fetching dashboard stats:", error);
-  }
-
-  transactions = data;
+  const backend = createBackend(Astro.locals, { kind: "session", userId: Astro.locals.user!.id });
+  transactions = await backend.listDailyFinances({ projectId, fromDate: startOfQuarterStr });
 }
 
 // Inicializar acumuladores
