@@ -353,11 +353,19 @@ $$;
 -- Revoking from `anon` by name is not enough: Postgres grants EXECUTE to PUBLIC
 -- on every new function, and `anon` inherits it from there, so the grant has to
 -- be taken from PUBLIC and handed back deliberately.
-REVOKE EXECUTE ON FUNCTION public.crear_venta       FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.actualizar_venta  FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.crear_compra      FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.actualizar_compra FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.limpiar_idempotency_keys FROM PUBLIC;
+--
+-- And revoking from PUBLIC is not enough either: a Supabase project carries
+-- `ALTER DEFAULT PRIVILEGES ... GRANT EXECUTE ON FUNCTIONS TO anon, authenticated`
+-- for the `public` schema, so each function is also created with grants of its
+-- own to those two roles, which survive the revoke from PUBLIC. Naming the roles
+-- explicitly is what actually closes the door; the GRANTs below then reopen it
+-- for the roles that should have it.
+REVOKE EXECUTE ON FUNCTION public.crear_venta       FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.actualizar_venta  FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.crear_compra      FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.actualizar_compra FROM PUBLIC, anon;
+-- Housekeeping that deletes rows: the service role only, never a browser token.
+REVOKE EXECUTE ON FUNCTION public.limpiar_idempotency_keys FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.crear_venta       TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.actualizar_venta  TO authenticated, service_role;

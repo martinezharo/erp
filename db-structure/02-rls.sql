@@ -85,8 +85,14 @@ $$;
 -- Revoking from `anon` alone would do nothing: Postgres grants EXECUTE to
 -- PUBLIC on every new function, and `anon` inherits it there. The grant has to
 -- be taken away from PUBLIC and then handed back to the roles that need it.
-REVOKE EXECUTE ON FUNCTION public.es_miembro(integer) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.es_admin_proyecto(integer) FROM PUBLIC;
+--
+-- Revoking from PUBLIC alone is not enough either, and this is the half that is
+-- easy to miss: a Supabase project also carries `ALTER DEFAULT PRIVILEGES ...
+-- GRANT EXECUTE ON FUNCTIONS TO anon` for the `public` schema, so every new
+-- function arrives with a grant to `anon` of its own. Dropping the PUBLIC grant
+-- leaves that one standing. Both have to go.
+REVOKE EXECUTE ON FUNCTION public.es_miembro(integer) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.es_admin_proyecto(integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.es_miembro(integer) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.es_admin_proyecto(integer) TO authenticated, service_role;
 

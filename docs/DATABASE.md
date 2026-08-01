@@ -29,9 +29,16 @@ Dos detalles que no son evidentes y que la suite comprueba:
   ejecuta con los permisos de su propietario y las políticas de las tablas de
   debajo ni se consultan: `vista_finanzas_diarias` entregaría las cifras de
   todos los proyectos por muy bien cerradas que estén las tablas.
-- **`REVOKE ... FROM anon` no basta en funciones.** Postgres concede `EXECUTE` a
-  `PUBLIC` en cada función nueva, y `anon` lo hereda de ahí. Hay que revocar de
-  `PUBLIC` y volver a conceder a los roles que sí deben poder llamarlas.
+- **Los permisos de las funciones se revocan dos veces.** Postgres concede
+  `EXECUTE` a `PUBLIC` en cada función nueva, y `anon` lo hereda de ahí; pero
+  además un proyecto de Supabase trae un `ALTER DEFAULT PRIVILEGES ... GRANT
+  EXECUTE ON FUNCTIONS TO anon, authenticated` sobre el esquema `public`, así que
+  cada función nace también con su propia concesión a esos dos roles. Revocar
+  solo de `PUBLIC` deja esa segunda en pie. Hay que nombrar los roles
+  explícitamente y volver a conceder a los que sí deben poder llamarlas.
+  `tests/db/bootstrap.sql` reproduce ese `ALTER DEFAULT PRIVILEGES`: sin él la
+  suite corre sobre un cluster más estricto que producción y da por buena una
+  revocación que allí no cambia nada.
 
 ## Enums
 

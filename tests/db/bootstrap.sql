@@ -65,6 +65,14 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, service_role;
 
+-- Functions get the same treatment, and this line is doing real work: a Supabase
+-- project grants EXECUTE to `anon` and `authenticated` on every new function in
+-- `public`, so `REVOKE ... FROM PUBLIC` leaves those two grants standing. Without
+-- this the suite ran against a stricter cluster than production and would pass on
+-- a revoke that changes nothing there.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
+
 -- Only the server ever writes to auth.users; the seed does it through
 -- service_role, the same way Supabase Auth would.
 GRANT SELECT, INSERT ON auth.users TO service_role;
