@@ -1,48 +1,48 @@
-# Base de datos
+# Database
 
-El esquema ejecutable vive en `db-structure/`, y se carga en orden:
+The executable schema lives in `db-structure/` and is loaded in this order:
 
-| Fichero | Contenido |
+| File | Contents |
 | --- | --- |
-| `01-schema.sql` | Enums, tablas, triggers de stock y vistas de informes |
-| `02-rls.sql` | Pertenencia a proyectos y políticas de row level security |
-| `03-agent-api.sql` | `api_keys`, idempotencia y las funciones transaccionales |
+| `01-schema.sql` | Enums, tables, stock triggers, and reporting views |
+| `02-rls.sql` | Project membership and row-level security policies |
+| `03-agent-api.sql` | `api_keys`, idempotency, and transactional functions |
 
-Antes había un único `structure.sql` que era un volcado descriptivo, no
-ejecutable (`ARRAY`, `USER-DEFINED`, cuerpos de trigger sueltos sin su
-`CREATE FUNCTION`). Servía para leerlo, no para levantar una base de datos, y
-por eso no había forma de probar ni una política ni una RPC: no existía nada que
-Postgres pudiera cargar. Los ficheros de `db-structure/` sí se cargan tal cual,
-que es justo lo que hace la suite de `tests/rls`.
+Previously, there was a single `structure.sql` file that was a descriptive,
+non-executable dump (`ARRAY`, `USER-DEFINED`, and standalone trigger bodies
+without their `CREATE FUNCTION`). It was useful for reading the schema, but not
+for creating a database, which meant there was no way to test a policy or RPC:
+there was nothing PostgreSQL could load. The files in `db-structure/` can be
+loaded as-is, which is exactly what the `tests/rls` suite does.
 
-## El límite entre inquilinos
+## The tenant boundary
 
-El proyecto (`proyectos`) es el límite. Un usuario ve las filas de un proyecto
-si, y solo si, tiene fila en `proyecto_usuarios`. Las tablas que no llevan
-`proyecto_id` — `venta_detalle`, `compra_detalle`, `movimientos_stock` — heredan
-el límite a través de su fila padre; dejarlas abiertas filtraría los precios y
-las cantidades a un JOIN de distancia aunque la cabecera fuese invisible.
+The project (`proyectos`) is the boundary. A user can see a project's rows if,
+and only if, they have a row in `proyecto_usuarios`. Tables without a
+`proyecto_id`—`venta_detalle`, `compra_detalle`, and `movimientos_stock`—inherit
+the boundary through their parent row. Leaving them open would expose prices and
+quantities one JOIN away even if the header were invisible.
 
-Dos detalles que no son evidentes y que la suite comprueba:
+Two non-obvious details covered by the test suite:
 
-- **Las vistas necesitan `security_invoker = true`.** Sin él una vista se
-  ejecuta con los permisos de su propietario y las políticas de las tablas de
-  debajo ni se consultan: `vista_finanzas_diarias` entregaría las cifras de
-  todos los proyectos por muy bien cerradas que estén las tablas.
-- **Los permisos de las funciones se revocan dos veces.** Postgres concede
-  `EXECUTE` a `PUBLIC` en cada función nueva, y `anon` lo hereda de ahí; pero
-  además un proyecto de Supabase trae un `ALTER DEFAULT PRIVILEGES ... GRANT
-  EXECUTE ON FUNCTIONS TO anon, authenticated` sobre el esquema `public`, así que
-  cada función nace también con su propia concesión a esos dos roles. Revocar
-  solo de `PUBLIC` deja esa segunda en pie. Hay que nombrar los roles
-  explícitamente y volver a conceder a los que sí deben poder llamarlas.
-  `tests/db/bootstrap.sql` reproduce ese `ALTER DEFAULT PRIVILEGES`: sin él la
-  suite corre sobre un cluster más estricto que producción y da por buena una
-  revocación que allí no cambia nada.
+- **Views need `security_invoker = true`.** Without it, a view runs with its
+  owner's permissions and the policies on the underlying tables are never
+  evaluated: `vista_finanzas_diarias` would return figures from every project,
+  regardless of how tightly the tables were secured.
+- **Function permissions are revoked twice.** PostgreSQL grants `EXECUTE` to
+  `PUBLIC` on every new function, and `anon` inherits it from there. In addition,
+  a Supabase project includes an `ALTER DEFAULT PRIVILEGES ... GRANT EXECUTE ON
+  FUNCTIONS TO anon, authenticated` for the `public` schema, so every function
+  is also created with a direct grant to those two roles. Revoking only from
+  `PUBLIC` leaves the second grant in place. The roles must be named explicitly,
+  followed by new grants to the roles that should be able to call the function.
+  `tests/db/bootstrap.sql` reproduces that `ALTER DEFAULT PRIVILEGES`; without
+  it, the suite would run against a cluster stricter than production and accept
+  a revocation that changes nothing there.
 
 ## Enums
 
-Hay que castearlos explícitamente en SQL escrito a mano:
+They must be cast explicitly in hand-written SQL:
 
 - `tipo_movimiento`: `compra`, `venta`, `devolucion_vta`, `ajuste manual`, `devolucion_com`
 - `estado_compra`: `pendiente`, `recibida`, `cancelada`
@@ -53,12 +53,12 @@ Hay que castearlos explícitamente en SQL escrito a mano:
 'gasto'::tipo_transaccion, 'recibida'::estado_compra, '2026-01-01'::timestamp
 ```
 
-Los subqueries dentro de `VALUES` no funcionan en el editor de Supabase; usar
-CTE + `INSERT ... SELECT`.
+Subqueries inside `VALUES` do not work in the Supabase editor; use a CTE with
+`INSERT ... SELECT` instead.
 
-## IVA
+## VAT
 
-Los precios se guardan **con IVA incluido**, así que el impuesto se extrae como
-`tipo / (100 + tipo)`, no como `tipo / 100`. 121,00 al 21 % son 100,00 de base y
-21,00 de IVA. Confundirlo desvía la declaración en una quinta parte, y es lo que
-comprueba `tests/rls/rpc-transactions.test.ts`.
+Prices are stored **with VAT included**, so the tax is extracted using
+`rate / (100 + rate)`, not `rate / 100`. At 21%, 121.00 consists of a 100.00
+taxable amount and 21.00 VAT. Confusing the two formulas throws the tax return
+off by one fifth; this is covered by `tests/rls/rpc-transactions.test.ts`.

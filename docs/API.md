@@ -1,84 +1,87 @@
 # OlivERP API v1
 
-API pensada para que agentes de IA y herramientas de automatización (n8n, Make,
-Zapier, Custom GPTs) operen el ERP sin pasar por la interfaz web.
+An API designed to let AI agents and automation tools (n8n, Make, Zapier,
+Custom GPTs) operate the ERP without using the web interface.
 
-El contrato completo y siempre actualizado está en:
+The complete, always up-to-date contract is available at:
 
 ```
 GET /api/v1/openapi.json
 ```
 
-Ese endpoint es público a propósito: un cliente tiene que poder leer el contrato
-antes de tener credenciales. No expone ningún dato.
+This endpoint is intentionally public: a client must be able to read the
+contract before it has credentials. It does not expose any data.
 
 ---
 
-## Puesta en marcha
+## Getting started
 
-### 1. Ejecutar el SQL
+### 1. Run the SQL
 
-En el editor SQL de Supabase, después de `db-structure/01-schema.sql` y
+In the Supabase SQL editor, after `db-structure/01-schema.sql` and
 `db-structure/02-rls.sql`:
 
 ```
 db-structure/03-agent-api.sql
 ```
 
-Crea las tablas `api_keys` e `idempotency_keys` y las funciones transaccionales
-`crear_venta`, `actualizar_venta`, `crear_compra` y `actualizar_compra`.
+This creates the `api_keys` and `idempotency_keys` tables and the transactional
+functions `crear_venta`, `actualizar_venta`, `crear_compra`, and
+`actualizar_compra`.
 
-### 2. Configurar el secreto del servidor
+### 2. Configure the server secret
 
-Las peticiones autenticadas por API key no tienen usuario de Supabase, así que
-el servidor necesita una **secret key** de Supabase:
+Requests authenticated with an API key do not have a Supabase user, so the
+server needs a Supabase **secret key**:
 
 ```env
 SUPABASE_SECRET_KEY=sb_secret_...
 ```
 
-La creas en el dashboard de Supabase, en **Settings → API Keys → Publishable and
-secret API keys**. Si el proyecto es antiguo verás un botón *Create new API
-keys*: crearlas es seguro y no rompe nada, se añaden junto a las que ya tienes.
+Create it in the Supabase dashboard under **Settings → API Keys → Publishable
+and secret API keys**. If the project is old, you will see a *Create new API
+keys* button: creating them is safe and does not break anything, as they are
+added alongside your existing keys.
 
-**Sin prefijo `PUBLIC_`**, para que Astro nunca la incluya en el bundle del
-cliente. En Cloudflare, configúrala como secreto (`wrangler secret put
-SUPABASE_SECRET_KEY`), no como variable en texto plano.
+Do **not** use the `PUBLIC_` prefix, so Astro never includes it in the client
+bundle. On Cloudflare, configure it as a secret (`wrangler secret put
+SUPABASE_SECRET_KEY`), not as a plain-text variable.
 
-> **Sobre las keys legacy.** La `service_role` sigue funcionando (`SUPABASE_SERVICE_ROLE_KEY`
-> se acepta como alternativa), pero Supabase la ha sustituido por las secret keys
-> y solo la mantiene hasta finales de 2026. Merece la pena migrar ya: las
-> `anon`/`service_role` derivan del JWT secret del proyecto, así que no se pueden
-> rotar sin tocar todo lo demás, mientras que las nuevas se crean, nombran y
-> revocan por separado. Además una secret key **devuelve 401 si se usa desde un
-> navegador** (Supabase lo detecta por el `User-Agent`), red de seguridad que la
-> `service_role` no tenía.
+> **About legacy keys.** The `service_role` key still works
+> (`SUPABASE_SERVICE_ROLE_KEY` is accepted as an alternative), but Supabase has
+> replaced it with secret keys and will only support it until the end of 2026.
+> It is worth migrating now: `anon`/`service_role` keys are derived from the
+> project's JWT secret, so they cannot be rotated without affecting everything
+> else, while the new keys can be created, named, and revoked independently. A
+> secret key also **returns 401 when used from a browser** (Supabase detects this
+> through the `User-Agent`), providing a safety net that `service_role` did not
+> have.
 >
-> En el lado cliente el equivalente es la publishable key: define
-> `PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...` y tiene prioridad sobre
-> `PUBLIC_SUPABASE_ANON_KEY`, que se sigue aceptando.
+> On the client side, the equivalent is the publishable key: define
+> `PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...`. It takes precedence over
+> `PUBLIC_SUPABASE_ANON_KEY`, which is still accepted.
 >
-> Ojo con el nombre: la *secret key* es de Supabase y va en el servidor; las
-> *API keys* (`erp_sk_...`) son las de este ERP y son las que reparten a los
-> agentes. No son lo mismo.
+> Mind the terminology: the *secret key* belongs to Supabase and stays on the
+> server; the *API keys* (`erp_sk_...`) belong to this ERP and are distributed to
+> agents. They are not the same thing.
 
-### 3. Crear una API key
+### 3. Create an API key
 
 ```bash
 pnpm api:key --nombre "n8n stock" --proyecto 1 --scopes read,write
 ```
 
-Opciones:
+Options:
 
-| Flag        | Descripción                                                       |
-| :---------- | :---------------------------------------------------------------- |
-| `--nombre`  | Obligatorio. Para identificarla después.                           |
-| `--proyecto`| Id del proyecto al que se fija la key. Si se omite, accede a todos. |
-| `--scopes`  | `read`, `write` o `read,write`. Por defecto `read`.                |
-| `--expira`  | Fecha de caducidad (`YYYY-MM-DD`). Por defecto no caduca.          |
+| Flag         | Description                                                        |
+| :----------- | :----------------------------------------------------------------- |
+| `--nombre`   | Required. Used to identify the key later.                       |
+| `--proyecto` | ID of the project to which the key is bound. Omit for all.       |
+| `--scopes`   | `read`, `write`, or `read,write`. Defaults to `read`.            |
+| `--expira`   | Expiration date (`YYYY-MM-DD`). Does not expire by default.      |
 
-La key se muestra **una sola vez**: en la base de datos solo se guarda su hash
-SHA-256. Si se pierde, se crea otra y se revoca la anterior:
+The key is shown **only once**: only its SHA-256 hash is stored in the database.
+If it is lost, create another key and revoke the previous one:
 
 ```sql
 UPDATE api_keys SET activa = false WHERE nombre = 'n8n stock';
@@ -86,59 +89,59 @@ UPDATE api_keys SET activa = false WHERE nombre = 'n8n stock';
 
 ---
 
-## Autenticación
+## Authentication
 
 ```bash
-curl -H "Authorization: Bearer erp_sk_..." https://tu-erp/api/v1/proyectos
+curl -H "Authorization: Bearer erp_sk_..." https://your-erp/api/v1/proyectos
 ```
 
-También se acepta `X-API-Key: erp_sk_...`, que es lo que envían por defecto
-varias herramientas de automatización.
+`X-API-Key: erp_sk_...` is also accepted and is the default header sent by
+several automation tools.
 
-La interfaz web sigue funcionando con su sesión de cookies; los mismos endpoints
-responden a ambos tipos de llamante.
+The web interface continues to work with its cookie session; the same endpoints
+support both types of caller.
 
-### Permisos
+### Permissions
 
-- `read` → métodos `GET`.
-- `write` → `POST`, `PATCH`, `DELETE`.
+- `read` → `GET` methods.
+- `write` → `POST`, `PATCH`, and `DELETE` methods.
 
-### Fijación a un proyecto
+### Binding a key to a project
 
-Una key fijada a un proyecto (`--proyecto 1`) no puede leer ni escribir en otro.
-En esas keys `proyecto_id` es opcional en las peticiones; si se envía y no
-coincide, la petición se rechaza en lugar de reescribirse en silencio.
+A key bound to a project (`--proyecto 1`) cannot read or write data in another
+one. For these keys, `proyecto_id` is optional in requests; if it is provided
+and does not match, the request is rejected instead of being silently rewritten.
 
-Es la configuración recomendada para agentes: da acceso a un negocio concreto sin
-exponer el resto.
+This is the recommended configuration for agents: it grants access to a single
+business without exposing the rest.
 
 ---
 
 ## Endpoints
 
-| Método   | Ruta                          | Descripción                                   |
-| :------- | :---------------------------- | :-------------------------------------------- |
-| `GET`    | `/api/v1/proyectos`           | Proyectos accesibles. Empieza aquí.            |
-| `GET`    | `/api/v1/productos`           | Catálogo. Filtro `buscar`.                     |
-| `POST`   | `/api/v1/productos`           | Crea un producto.                              |
-| `GET`    | `/api/v1/ventas`              | Ventas. Filtros de fecha, estado y canal.      |
-| `POST`   | `/api/v1/ventas`              | Registra una venta (transaccional).            |
-| `GET`    | `/api/v1/ventas/{id}`         | Detalle de una venta.                          |
-| `PATCH`  | `/api/v1/ventas/{id}`         | Modifica cabecera y/o líneas.                  |
-| `GET`    | `/api/v1/compras`             | Compras.                                       |
-| `POST`   | `/api/v1/compras`             | Registra una compra (transaccional).           |
-| `GET`    | `/api/v1/compras/{id}`        | Detalle de una compra.                         |
-| `PATCH`  | `/api/v1/compras/{id}`        | Modifica cabecera y/o líneas.                  |
-| `GET`    | `/api/v1/transacciones`       | Otros ingresos y gastos.                       |
-| `POST`   | `/api/v1/transacciones`       | Registra un ingreso o gasto.                   |
-| `GET`    | `/api/v1/transacciones/{id}`  | Detalle.                                       |
-| `PATCH`  | `/api/v1/transacciones/{id}`  | Modifica.                                      |
-| `DELETE` | `/api/v1/transacciones/{id}`  | Borra.                                         |
-| `GET`    | `/api/v1/stock`               | Stock y días de cobertura.                     |
-| `POST`   | `/api/v1/stock/ajustes`       | Ajuste manual de stock.                        |
-| `GET`    | `/api/v1/finanzas`            | Ingresos, gastos, beneficio y saldo de IVA.    |
+| Method   | Path                          | Description                                      |
+| :------- | :---------------------------- | :----------------------------------------------- |
+| `GET`    | `/api/v1/proyectos`           | Accessible projects. Start here.                 |
+| `GET`    | `/api/v1/productos`           | Product catalog. Supports the `buscar` filter.   |
+| `POST`   | `/api/v1/productos`           | Creates a product.                               |
+| `GET`    | `/api/v1/ventas`              | Sales. Supports date, status, and channel filters. |
+| `POST`   | `/api/v1/ventas`              | Records a sale transactionally.                  |
+| `GET`    | `/api/v1/ventas/{id}`         | Returns sale details.                            |
+| `PATCH`  | `/api/v1/ventas/{id}`         | Updates the header and/or line items.             |
+| `GET`    | `/api/v1/compras`             | Purchases.                                       |
+| `POST`   | `/api/v1/compras`             | Records a purchase transactionally.              |
+| `GET`    | `/api/v1/compras/{id}`        | Returns purchase details.                        |
+| `PATCH`  | `/api/v1/compras/{id}`        | Updates the header and/or line items.             |
+| `GET`    | `/api/v1/transacciones`       | Other income and expenses.                       |
+| `POST`   | `/api/v1/transacciones`       | Records income or an expense.                    |
+| `GET`    | `/api/v1/transacciones/{id}`  | Returns transaction details.                     |
+| `PATCH`  | `/api/v1/transacciones/{id}`  | Updates a transaction.                           |
+| `DELETE` | `/api/v1/transacciones/{id}`  | Deletes a transaction.                           |
+| `GET`    | `/api/v1/stock`               | Stock and days of inventory coverage.            |
+| `POST`   | `/api/v1/stock/ajustes`       | Applies a manual stock adjustment.               |
+| `GET`    | `/api/v1/finanzas`            | Income, expenses, profit, and VAT balance.        |
 
-Los endpoints de lista devuelven siempre el mismo sobre:
+List endpoints always return the same envelope:
 
 ```json
 {
@@ -149,34 +152,34 @@ Los endpoints de lista devuelven siempre el mismo sobre:
 
 ---
 
-## Convenciones que conviene conocer
+## Important conventions
 
-**Los precios incluyen IVA.** Es como los guarda el esquema. Las respuestas
-desglosan `total_base`, `total_iva` y `total` para que no haya que deducirlo.
+**Prices include VAT.** This is how the schema stores them. Responses break out
+`total_base`, `total_iva`, and `total`, so clients do not have to derive them.
 
-**Los estados deciden qué cuenta.** Solo las ventas en estado `enviada` suman
-como ingreso, y solo las compras en `recibida` cuentan como gasto y mueven
-stock. Una devolución es un `PATCH` del estado a `devuelta`, no un borrado.
+**Statuses determine what counts.** Only sales with the `enviada` status count
+as income, and only purchases with the `recibida` status count as expenses and
+move stock. A return is a status `PATCH` to `devuelta`, not a deletion.
 
-**El stock se mueve solo.** Los movimientos de ventas y compras los generan
-triggers de la base de datos. `POST /api/v1/stock/ajustes` es únicamente para
-correcciones manuales (roturas, recuentos, regalos).
+**Stock moves automatically.** Database triggers generate movements for sales
+and purchases. `POST /api/v1/stock/ajustes` is only for manual corrections
+(breakage, stock counts, and giveaways).
 
-**Las fechas admiten `YYYY-MM-DD` o ISO 8601.** Una fecha sin hora se interpreta
-como medianoche.
+**Dates accept `YYYY-MM-DD` or ISO 8601.** A date without a time is interpreted
+as midnight.
 
-**`importe` siempre es positivo** en transacciones; el signo lo determina `tipo`.
+**`importe` is always positive** in transactions; `tipo` determines its sign.
 
 ---
 
-## Reintentos seguros (`Idempotency-Key`)
+## Safe retries (`Idempotency-Key`)
 
-Una petición que da timeout deja al llamante sin saber si la venta se registró.
-Reintentar a ciegas la duplica. Para evitarlo, envía una clave única por
-operación:
+When a request times out, the caller does not know whether the sale was
+recorded. Retrying blindly could duplicate it. To avoid this, send a unique key
+for each operation:
 
 ```bash
-curl -X POST https://tu-erp/api/v1/ventas \
+curl -X POST https://your-erp/api/v1/ventas \
   -H "Authorization: Bearer erp_sk_..." \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: venta-shopify-10432" \
@@ -187,27 +190,27 @@ curl -X POST https://tu-erp/api/v1/ventas \
   }'
 ```
 
-Repetir esa llamada devuelve la respuesta original con la cabecera
-`Idempotency-Replayed: true`, sin crear una segunda venta.
+Repeating this call returns the original response with the
+`Idempotency-Replayed: true` header without creating a second sale.
 
-- Misma clave con un cuerpo distinto → `422 idempotency_mismatch`.
-- Misma clave mientras la primera sigue en curso → `409 conflict`.
-- Si la petición falla, la clave se libera y puede reutilizarse.
+- Same key with a different body → `422 idempotency_mismatch`.
+- Same key while the first request is still in progress → `409 conflict`.
+- If the request fails, the key is released and can be reused.
 
-Un buen valor es el id del pedido en el sistema de origen, que es naturalmente
-único y estable entre reintentos.
+A good value is the order ID from the source system, which is naturally unique
+and stable across retries.
 
-Las claves guardadas se pueden purgar de vez en cuando:
+Stored keys can be purged periodically:
 
 ```sql
-SELECT limpiar_idempotency_keys(7); -- borra las de más de 7 días
+SELECT limpiar_idempotency_keys(7); -- deletes keys older than 7 days
 ```
 
 ---
 
-## Errores
+## Errors
 
-Todos los errores usan la misma forma:
+All errors use the same structure:
 
 ```json
 {
@@ -230,56 +233,56 @@ Todos los errores usan la misma forma:
 }
 ```
 
-`field` usa notación con puntos, así que apunta directamente al sitio del JSON
-enviado. `expected` lista los valores aceptados cuando el campo está acotado, que
-es lo que permite a un modelo corregir la llamada en lugar de reintentarla igual.
+`field` uses dot notation, so it points directly to the relevant part of the
+submitted JSON. `expected` lists the accepted values for a constrained field,
+allowing a model to correct the call instead of retrying it unchanged.
 
-| Código                 | HTTP | Significado                                        |
-| :--------------------- | :--- | :------------------------------------------------- |
-| `validation_error`     | 400  | Cuerpo o query inválidos.                           |
-| `unauthorized`         | 401  | Falta la key, o es inválida, revocada o caducada.   |
-| `forbidden`            | 403  | Sin el permiso necesario, o proyecto no permitido.  |
-| `not_found`            | 404  | El recurso no existe (o no es visible para la key). |
-| `conflict`             | 409  | Petición en curso con la misma `Idempotency-Key`.   |
-| `idempotency_mismatch` | 422  | Clave reutilizada con otro cuerpo.                  |
-| `demo_mode`            | 403  | El despliegue está en modo demo.                    |
-| `not_configured`       | 503  | Falta `SUPABASE_SECRET_KEY` en el servidor.         |
-| `internal_error`       | 500  | Fallo del servidor.                                 |
+| Code                   | HTTP | Meaning                                             |
+| :--------------------- | :--- | :-------------------------------------------------- |
+| `validation_error`     | 400  | Invalid request body or query.                      |
+| `unauthorized`         | 401  | The key is missing, invalid, revoked, or expired.   |
+| `forbidden`            | 403  | Missing permission or project not allowed.          |
+| `not_found`            | 404  | The resource does not exist or is not visible.      |
+| `conflict`             | 409  | A request with the same key is still in progress.   |
+| `idempotency_mismatch` | 422  | The key was reused with a different body.           |
+| `demo_mode`            | 403  | The deployment is running in demo mode.             |
+| `not_configured`       | 503  | `SUPABASE_SECRET_KEY` is missing on the server.      |
+| `internal_error`       | 500  | Server failure.                                     |
 
 ---
 
-## Ejemplos
+## Examples
 
-### Reponer lo que se agota esta semana
-
-```bash
-curl -H "Authorization: Bearer erp_sk_..." \
-  "https://tu-erp/api/v1/stock?max_dias_stock=7"
-```
-
-### Resumen financiero del mes
+### Restock items running out this week
 
 ```bash
 curl -H "Authorization: Bearer erp_sk_..." \
-  "https://tu-erp/api/v1/finanzas?desde=2026-01-01&hasta=2026-01-31&detalle=resumen"
+  "https://your-erp/api/v1/stock?max_dias_stock=7"
 ```
 
-### Marcar una venta como devuelta
+### Monthly financial summary
 
 ```bash
-curl -X PATCH https://tu-erp/api/v1/ventas/42 \
+curl -H "Authorization: Bearer erp_sk_..." \
+  "https://your-erp/api/v1/finanzas?desde=2026-01-01&hasta=2026-01-31&detalle=resumen"
+```
+
+### Mark a sale as returned
+
+```bash
+curl -X PATCH https://your-erp/api/v1/ventas/42 \
   -H "Authorization: Bearer erp_sk_..." \
   -H "Content-Type: application/json" \
   -d '{"estado": "devuelta"}'
 ```
 
-### Conectar un Custom GPT o un agente
+### Connect a Custom GPT or agent
 
-Dale la URL del spec y la key:
+Give it the spec URL and the key:
 
 ```
-https://tu-erp/api/v1/openapi.json
+https://your-erp/api/v1/openapi.json
 ```
 
-Con eso descubre solo las operaciones, los campos obligatorios y los valores de
-enum aceptados; no hace falta describirle la API a mano.
+It can then discover the operations, required fields, and accepted enum values
+on its own; there is no need to describe the API manually.
