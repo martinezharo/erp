@@ -8,9 +8,10 @@
 -- no table carried a policy.
 --
 -- The tenant boundary is the project. A user sees a project's rows if, and only
--- if, they are a member of it. Business tables that do not carry `proyecto_id`
--- (`venta_detalle`, `compra_detalle`, `movimientos_stock`) inherit the boundary
--- through their parent row.
+-- if, they are a member of it. Every business table carries `proyecto_id` — on
+-- `venta_detalle`, `compra_detalle` and `movimientos_stock` it is derived from
+-- the parent row by trigger rather than supplied by the client — so every policy
+-- below is the same sentence about the same column.
 -- =============================================================================
 
 
@@ -40,15 +41,37 @@ CREATE INDEX IF NOT EXISTS proyecto_usuarios_user_id_idx ON public.proyecto_usua
 -- -----------------------------------------------------------------------------
 -- Membership predicates
 -- -----------------------------------------------------------------------------
--- Every policy is one of these two calls. Writing `EXISTS (SELECT 1 FROM
--- proyecto_usuarios ...)` inline in each policy would work, but it would also
--- put a policy on `proyecto_usuarios` in the path of every other policy and
--- recurse. SECURITY DEFINER breaks that cycle, and `STABLE` lets the planner
--- hoist the call out of the row loop instead of running it per row.
+-- Every policy is written against these. Inlining `EXISTS (SELECT 1 FROM
+-- proyecto_usuarios ...)` in each policy would work, but it would also put a
+-- policy on `proyecto_usuarios` in the path of every other policy and recurse.
+-- SECURITY DEFINER breaks that cycle.
 --
 -- `search_path` is pinned: a SECURITY DEFINER function that resolves table names
 -- through the caller's `search_path` can be pointed at a table the caller
 -- controls, which would turn the membership check into whatever they want.
+--
+-- `mis_proyectos()` is the one the read policies use, and the shape is the whole
+-- point. `es_miembro(proyecto_id)` takes the row's own column, so it is a fresh
+-- call for every row examined — and a SECURITY DEFINER function is never inlined
+-- by the planner, so each call is a real executor invocation. That is affordable
+-- on a table someone paged through and ruinous underneath `vista_stock_final`,
+-- which touches the detail tables once per product. Written as `proyecto_id IN
+-- (SELECT public.mis_proyectos())` the subquery depends on no column, so the
+-- planner runs it once for the whole statement and the row test becomes a hash
+-- lookup — which an index on `proyecto_id` can then satisfy.
+--
+-- `es_miembro` stays for the single-row questions (`proyectos`, and the RPCs in
+-- 03-agent-api.sql), where one call is one call.
+
+CREATE OR REPLACE FUNCTION public.mis_proyectos()
+RETURNS SETOF integer
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT proyecto_id FROM public.proyecto_usuarios WHERE user_id = auth.uid();
+$$;
 
 CREATE OR REPLACE FUNCTION public.es_miembro(p_proyecto_id integer)
 RETURNS boolean
@@ -91,8 +114,10 @@ $$;
 -- GRANT EXECUTE ON FUNCTIONS TO anon` for the `public` schema, so every new
 -- function arrives with a grant to `anon` of its own. Dropping the PUBLIC grant
 -- leaves that one standing. Both have to go.
+REVOKE EXECUTE ON FUNCTION public.mis_proyectos() FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.es_miembro(integer) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.es_admin_proyecto(integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.mis_proyectos() TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.es_miembro(integer) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.es_admin_proyecto(integer) TO authenticated, service_role;
 
@@ -124,7 +149,7 @@ ALTER TABLE public.otros_ingresos_gastos ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS proyectos_select ON public.proyectos;
 CREATE POLICY proyectos_select ON public.proyectos
   FOR SELECT TO authenticated
-  USING (public.es_miembro(id));
+  USING (id IN (SELECT public.mis_proyectos()));
 
 DROP POLICY IF EXISTS proyectos_update ON public.proyectos;
 CREATE POLICY proyectos_update ON public.proyectos
@@ -148,7 +173,7 @@ CREATE POLICY proyectos_update ON public.proyectos
 DROP POLICY IF EXISTS proyecto_usuarios_select ON public.proyecto_usuarios;
 CREATE POLICY proyecto_usuarios_select ON public.proyecto_usuarios
   FOR SELECT TO authenticated
-  USING (public.es_miembro(proyecto_id));
+  USING (proyecto_id IN (SELECT public.mis_proyectos()));
 
 DROP POLICY IF EXISTS proyecto_usuarios_insert ON public.proyecto_usuarios;
 CREATE POLICY proyecto_usuarios_insert ON public.proyecto_usuarios
@@ -178,74 +203,71 @@ CREATE POLICY proyecto_usuarios_delete ON public.proyecto_usuarios
 DROP POLICY IF EXISTS productos_all ON public.productos;
 CREATE POLICY productos_all ON public.productos
   FOR ALL TO authenticated
-  USING (public.es_miembro(proyecto_id))
-  WITH CHECK (public.es_miembro(proyecto_id));
+  USING (proyecto_id IN (SELECT public.mis_proyectos()))
+  WITH CHECK (proyecto_id IN (SELECT public.mis_proyectos()));
 
 DROP POLICY IF EXISTS ventas_all ON public.ventas;
 CREATE POLICY ventas_all ON public.ventas
   FOR ALL TO authenticated
-  USING (public.es_miembro(proyecto_id))
-  WITH CHECK (public.es_miembro(proyecto_id));
+  USING (proyecto_id IN (SELECT public.mis_proyectos()))
+  WITH CHECK (proyecto_id IN (SELECT public.mis_proyectos()));
 
 DROP POLICY IF EXISTS compras_all ON public.compras;
 CREATE POLICY compras_all ON public.compras
   FOR ALL TO authenticated
-  USING (public.es_miembro(proyecto_id))
-  WITH CHECK (public.es_miembro(proyecto_id));
+  USING (proyecto_id IN (SELECT public.mis_proyectos()))
+  WITH CHECK (proyecto_id IN (SELECT public.mis_proyectos()));
 
 DROP POLICY IF EXISTS otros_ingresos_gastos_all ON public.otros_ingresos_gastos;
 CREATE POLICY otros_ingresos_gastos_all ON public.otros_ingresos_gastos
   FOR ALL TO authenticated
-  USING (public.es_miembro(proyecto_id))
-  WITH CHECK (public.es_miembro(proyecto_id));
+  USING (proyecto_id IN (SELECT public.mis_proyectos()))
+  WITH CHECK (proyecto_id IN (SELECT public.mis_proyectos()));
 
 
 -- -----------------------------------------------------------------------------
--- Tables that inherit the boundary through a parent
+-- Tables whose tenant is inherited from a parent
 -- -----------------------------------------------------------------------------
--- These carry no `proyecto_id` of their own. Reaching the parent from the
--- policy is what stops a line item from being the way around the header's
--- policy: a sale is invisible, but its lines carry the prices and quantities,
--- so leaving them open would leak the same information one join away.
+-- A line item must not be the way around its header's policy: a sale can be
+-- invisible while its lines still carry the prices and quantities, so leaving
+-- them open would leak the same information one join away.
+--
+-- The first version of these policies asked the parent directly — `EXISTS
+-- (SELECT 1 FROM ventas v WHERE v.id = venta_id AND es_miembro(v.proyecto_id))`
+-- — which is correct and was unusable. The subquery names a column of the row
+-- being tested, so it runs per row; the scan it starts on `ventas` is itself
+-- under `ventas_all`; and `vista_stock_final` walks these tables once per
+-- product. `SELECT * FROM vista_stock_final` on a real project ran past the
+-- eight-second `statement_timeout` and the stock page came back empty.
+--
+-- So the parent's `proyecto_id` is now carried on the row (see 01-schema.sql),
+-- filled by a trigger that ignores whatever the client sent, and these read like
+-- every other policy here. The question asked is unchanged — may this caller
+-- reach the project this row belongs to — but it is now one hash lookup per row
+-- against a set computed once, on an indexed column.
+--
+-- Stock movements are written by triggers on the detail tables, which run as the
+-- invoking user, so a member inserting a sale line must be allowed to create the
+-- movement it derives from; it lands in the same project, so `WITH CHECK` passes
+-- for exactly the callers who were allowed to write the line.
 
 DROP POLICY IF EXISTS venta_detalle_all ON public.venta_detalle;
 CREATE POLICY venta_detalle_all ON public.venta_detalle
   FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.ventas v
-    WHERE v.id = venta_detalle.venta_id AND public.es_miembro(v.proyecto_id)
-  ))
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM public.ventas v
-    WHERE v.id = venta_detalle.venta_id AND public.es_miembro(v.proyecto_id)
-  ));
+  USING (proyecto_id IN (SELECT public.mis_proyectos()))
+  WITH CHECK (proyecto_id IN (SELECT public.mis_proyectos()));
 
 DROP POLICY IF EXISTS compra_detalle_all ON public.compra_detalle;
 CREATE POLICY compra_detalle_all ON public.compra_detalle
   FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.compras c
-    WHERE c.id = compra_detalle.compra_id AND public.es_miembro(c.proyecto_id)
-  ))
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM public.compras c
-    WHERE c.id = compra_detalle.compra_id AND public.es_miembro(c.proyecto_id)
-  ));
+  USING (proyecto_id IN (SELECT public.mis_proyectos()))
+  WITH CHECK (proyecto_id IN (SELECT public.mis_proyectos()));
 
--- Stock movements are written by triggers on the detail tables, which run as
--- the invoking user, so a member inserting a sale line must be allowed to
--- create the movement it derives from.
 DROP POLICY IF EXISTS movimientos_stock_all ON public.movimientos_stock;
 CREATE POLICY movimientos_stock_all ON public.movimientos_stock
   FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.productos p
-    WHERE p.id = movimientos_stock.producto_id AND public.es_miembro(p.proyecto_id)
-  ))
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM public.productos p
-    WHERE p.id = movimientos_stock.producto_id AND public.es_miembro(p.proyecto_id)
-  ));
+  USING (proyecto_id IN (SELECT public.mis_proyectos()))
+  WITH CHECK (proyecto_id IN (SELECT public.mis_proyectos()));
 
 
 -- -----------------------------------------------------------------------------

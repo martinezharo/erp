@@ -221,6 +221,46 @@ suite("tenant isolation", () => {
             expect(message).toMatch(/row-level security/i);
         });
 
+        it("refuses a sale line written onto another project's sale", async () => {
+            // The child tables are now guarded by their own `proyecto_id`, which
+            // the trigger derives from the parent. So this is the assertion that
+            // the derivation is what decides: the line names Rival's sale, the
+            // trigger stamps Rival's project on it, and `WITH CHECK` refuses it.
+            const message = await db.expectDenied(
+                "authenticated",
+                IDS.adminAcme,
+                `INSERT INTO venta_detalle (venta_id, producto_id, unidades, precio_unitario_venta, porcentaje_iva)
+                 VALUES ($1,$2,1,10.00,21)`,
+                [f.ventaRival, f.productoAcme],
+            );
+            expect(message).toMatch(/row-level security/i);
+        });
+
+        it("ignores a proyecto_id supplied by the client on a sale line", async () => {
+            // A column the caller could choose would be a caller choosing which
+            // project they may write into. The trigger overwrites it, so naming
+            // Rival's project on a line of Acme's own sale changes nothing.
+            const [{ id }] = await db.as(
+                "authenticated",
+                IDS.adminAcme,
+                `INSERT INTO venta_detalle (venta_id, proyecto_id, producto_id, unidades, precio_unitario_venta, porcentaje_iva)
+                 VALUES ($1,$2,$3,1,10.00,21) RETURNING id`,
+                [f.ventaAcme, f.rival, f.productoAcme],
+            );
+            const rows = await db.as(
+                "service_role",
+                null,
+                `SELECT proyecto_id FROM venta_detalle WHERE id = $1`,
+                [id],
+            );
+            expect(rows.map((r) => r.proyecto_id)).toEqual([f.acme]);
+
+            // The fixture is seeded once for the whole file, so this line and
+            // the stock movement its trigger derived have to go back out again.
+            await db.as("service_role", null, `DELETE FROM movimientos_stock WHERE ref_venta_detalle_id = $1`, [id]);
+            await db.as("service_role", null, `DELETE FROM venta_detalle WHERE id = $1`, [id]);
+        });
+
         it("silently matches nothing when deleting another project's row", async () => {
             // A delete of an invisible row is not an error, it is a no-op — so
             // the assertion has to be that the row survived.
@@ -308,6 +348,11 @@ suite("tenant isolation", () => {
             expect(message).toMatch(/permission denied/i);
         });
 
+        it("does not let an anonymous request list the projects of whoever it is", async () => {
+            const message = await db.expectDenied("anon", null, `SELECT mis_proyectos()`);
+            expect(message).toMatch(/permission denied/i);
+        });
+
         it("pins its search_path", async () => {
             // A SECURITY DEFINER function that resolves table names through the
             // caller's search_path can be aimed at a table the caller controls,
@@ -316,9 +361,13 @@ suite("tenant isolation", () => {
                 "service_role",
                 null,
                 `SELECT proname, proconfig FROM pg_proc
-                  WHERE proname IN ('es_miembro','es_admin_proyecto') ORDER BY proname`,
+                  WHERE proname IN ('es_miembro','es_admin_proyecto','mis_proyectos',
+                                    'derivar_proyecto_venta_detalle',
+                                    'derivar_proyecto_compra_detalle',
+                                    'derivar_proyecto_movimiento')
+                  ORDER BY proname`,
             );
-            expect(rows).toHaveLength(2);
+            expect(rows).toHaveLength(6);
             for (const fn of rows) {
                 expect(fn.proconfig ?? [], `function ${fn.proname}`).toContain(
                     "search_path=public, pg_temp",

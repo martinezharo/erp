@@ -25,6 +25,8 @@ export interface Compra {
 export interface CompraDetalle {
     id: number;
     compra_id: number;
+    /** Derived from the parent purchase by trigger; never sent by the client. */
+    proyecto_id: number;
     producto_id: number;
     unidades: number;
     precio_unitario_compra: number;
@@ -42,6 +44,8 @@ export interface Venta {
 export interface VentaDetalle {
     id: number;
     venta_id: number;
+    /** Derived from the parent sale by trigger; never sent by the client. */
+    proyecto_id: number;
     producto_id: number;
     unidades: number;
     precio_unitario_venta: number;
@@ -51,6 +55,8 @@ export interface VentaDetalle {
 export interface MovimientoStock {
     id: number;
     producto_id: number;
+    /** Derived from the product by trigger; never sent by the client. */
+    proyecto_id: number;
     unidades: number;
     tipo_movimiento: TipoMovimiento;
     ref_compra_detalle_id?: number;
