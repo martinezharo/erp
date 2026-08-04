@@ -1,0 +1,132 @@
+[
+  {
+    "schema": "public",
+    "table": "compra_detalle",
+    "name": "compra_detalle_all",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "ALL",
+    "using": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))",
+    "check": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))"
+  },
+  {
+    "schema": "public",
+    "table": "compras",
+    "name": "compras_all",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "ALL",
+    "using": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))",
+    "check": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))"
+  },
+  {
+    "schema": "public",
+    "table": "movimientos_stock",
+    "name": "movimientos_stock_all",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "ALL",
+    "using": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))",
+    "check": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))"
+  },
+  {
+    "schema": "public",
+    "table": "otros_ingresos_gastos",
+    "name": "otros_ingresos_gastos_all",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "ALL",
+    "using": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))",
+    "check": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))"
+  },
+  {
+    "schema": "public",
+    "table": "productos",
+    "name": "productos_all",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "ALL",
+    "using": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))",
+    "check": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))"
+  },
+  {
+    "schema": "public",
+    "table": "proyecto_usuarios",
+    "name": "proyecto_usuarios_delete",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "DELETE",
+    "using": "es_admin_proyecto(proyecto_id)",
+    "check": null
+  },
+  {
+    "schema": "public",
+    "table": "proyecto_usuarios",
+    "name": "proyecto_usuarios_insert",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "INSERT",
+    "using": null,
+    "check": "es_admin_proyecto(proyecto_id)"
+  },
+  {
+    "schema": "public",
+    "table": "proyecto_usuarios",
+    "name": "proyecto_usuarios_select",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "SELECT",
+    "using": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))",
+    "check": null
+  },
+  {
+    "schema": "public",
+    "table": "proyecto_usuarios",
+    "name": "proyecto_usuarios_update",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "UPDATE",
+    "using": "es_admin_proyecto(proyecto_id)",
+    "check": "es_admin_proyecto(proyecto_id)"
+  },
+  {
+    "schema": "public",
+    "table": "proyectos",
+    "name": "proyectos_select",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "SELECT",
+    "using": "(id IN ( SELECT mis_proyectos() AS mis_proyectos))",
+    "check": null
+  },
+  {
+    "schema": "public",
+    "table": "proyectos",
+    "name": "proyectos_update",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "UPDATE",
+    "using": "es_admin_proyecto(id)",
+    "check": "es_admin_proyecto(id)"
+  },
+  {
+    "schema": "public",
+    "table": "venta_detalle",
+    "name": "venta_detalle_all",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "ALL",
+    "using": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))",
+    "check": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))"
+  },
+  {
+    "schema": "public",
+    "table": "ventas",
+    "name": "ventas_all",
+    "permissive": "PERMISSIVE",
+    "roles": ["authenticated"],
+    "command": "ALL",
+    "using": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))",
+    "check": "(proyecto_id IN ( SELECT mis_proyectos() AS mis_proyectos))"
+  }
+]

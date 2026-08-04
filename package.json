@@ -12,6 +12,7 @@
         "test:watch": "vitest",
         "api:key": "node scripts/create-api-key.mjs",
         "migrate:supabase": "node scripts/migrate-supabase-to-convex.mjs",
+        "db:policies:check": "node scripts/check-rls-drift.mjs",
         "test:rls": "vitest run --config vitest.rls.config.ts",
         "prepare": "simple-git-hooks"
     },

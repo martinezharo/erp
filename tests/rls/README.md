@@ -40,6 +40,22 @@ Any local cluster works — nothing here needs Supabase itself.
 `tests/db/bootstrap.sql` recreates the only pieces the schema references: the
 three PostgREST roles, `auth.uid()` and `auth.users`.
 
+## Detecting production policy drift
+
+`db-structure/rls-policies.json` is the reviewed policy manifest. The RLS suite
+compares it with a fresh database loaded from `db-structure/*.sql`, so schema
+changes cannot silently leave the manifest stale. Compare that same manifest
+with production using a read-only database connection:
+
+```bash
+export RLS_POLICY_DATABASE_URL='postgresql://readonly:...@db.example/postgres?sslmode=require'
+pnpm run db:policies:check
+```
+
+The command exits with status 1 and lists missing, unexpected, and changed
+policies. Use a dedicated login with only enough access to read `pg_policies`;
+the check never writes to the target database.
+
 ## How a test says "this request comes from that user"
 
 Exactly the way PostgREST does it. `auth.uid()` reads the

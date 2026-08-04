@@ -27,7 +27,13 @@ export type Role = "anon" | "authenticated" | "service_role";
 
 export interface Db {
     /** Runs `sql` as `role`, impersonating `userId` when authenticated. */
-    as(role: Role, userId: string | null, sql: string, params?: unknown[]): Promise<any[]>;
+    as(
+        role: Role,
+        userId: string | null,
+        sql: string,
+        params?: unknown[],
+        options?: { statementTimeoutMs?: number },
+    ): Promise<any[]>;
     /** Same, but returns the error message instead of throwing. */
     expectDenied(role: Role, userId: string | null, sql: string, params?: unknown[]): Promise<string>;
     close(): Promise<void>;
@@ -64,7 +70,7 @@ export async function createTestDb(seed: (db: Db) => Promise<void>): Promise<Db>
     }
 
     const db: Db = {
-        async as(role, userId, sql, params = []) {
+        async as(role, userId, sql, params = [], options = {}) {
             // Wrapped in a transaction so `SET LOCAL` unwinds afterwards and no
             // test can leak its identity into the next one.
             await client.query("BEGIN");
@@ -72,6 +78,11 @@ export async function createTestDb(seed: (db: Db) => Promise<void>): Promise<Db>
                 await client.query(`SET LOCAL ROLE ${role}`);
                 await client.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`, [userId ?? ""]);
                 await client.query(`SELECT set_config('request.jwt.claim.role', $1, true)`, [role]);
+                if (options.statementTimeoutMs !== undefined) {
+                    await client.query(`SELECT set_config('statement_timeout', $1, true)`, [
+                        `${options.statementTimeoutMs}ms`,
+                    ]);
+                }
                 const result = await client.query(sql, params);
                 await client.query("COMMIT");
                 return result.rows;
