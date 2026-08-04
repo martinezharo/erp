@@ -16,6 +16,12 @@ interface NormalizedTransaction {
 const PURCHASE_CHANNEL = "Proveedor";
 const OTHER_CHANNEL = "Manual";
 
+function optionalAmount(value: string | null): number | undefined {
+    if (value === null || value.trim() === "") return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function saleTransaction(row: Record<string, unknown>): NormalizedTransaction {
     const details = (row.venta_detalle as Array<Record<string, unknown>> | undefined) ?? [];
     const names = details
@@ -63,8 +69,8 @@ export const GET: APIRoute = async (context) => {
     const channel = context.url.searchParams.get("channel") || "";
     const dateFrom = context.url.searchParams.get("dateFrom") || undefined;
     const dateTo = context.url.searchParams.get("dateTo") || undefined;
-    const amountMin = Number(context.url.searchParams.get("amountMin"));
-    const amountMax = Number(context.url.searchParams.get("amountMax"));
+    const amountMin = optionalAmount(context.url.searchParams.get("amountMin"));
+    const amountMax = optionalAmount(context.url.searchParams.get("amountMax"));
     const page = Math.max(1, Number.parseInt(context.url.searchParams.get("page") || "1", 10));
     const pageSize = Math.min(100, Math.max(1, Number.parseInt(context.url.searchParams.get("pageSize") || "20", 10)));
 
@@ -94,8 +100,8 @@ export const GET: APIRoute = async (context) => {
 
         let filtered = normalized;
         if (search) filtered = filtered.filter((tx) => tx.concept.toLowerCase().includes(search));
-        if (!Number.isNaN(amountMin)) filtered = filtered.filter((tx) => tx.amount >= amountMin);
-        if (!Number.isNaN(amountMax)) filtered = filtered.filter((tx) => tx.amount <= amountMax);
+        if (amountMin !== undefined) filtered = filtered.filter((tx) => tx.amount >= amountMin);
+        if (amountMax !== undefined) filtered = filtered.filter((tx) => tx.amount <= amountMax);
         filtered.sort((a, b) => a.date !== b.date ? b.date.localeCompare(a.date) : b.id - a.id);
 
         const total = filtered.length;
