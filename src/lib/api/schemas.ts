@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { roundMoney, roundVatRate } from "./numbers";
 
 /**
  * Request schemas for the v1 API.
@@ -39,7 +40,13 @@ const idSchema = z.number().int().positive();
 const porcentajeIvaSchema = z
     .number()
     .min(0, { message: "El porcentaje de IVA no puede ser negativo." })
-    .max(100, { message: "El porcentaje de IVA no puede superar 100." });
+    .max(100, { message: "El porcentaje de IVA no puede superar 100." })
+    .transform(roundVatRate);
+
+const importeSchema = z
+    .number()
+    .nonnegative({ message: "El importe no puede ser negativo." })
+    .transform(roundMoney);
 
 /** A single line of a sale or purchase. */
 export const lineaSchema = z.object({
@@ -48,9 +55,7 @@ export const lineaSchema = z.object({
         .number()
         .int({ message: "Las unidades deben ser un numero entero." })
         .positive({ message: "Las unidades deben ser mayores que cero." }),
-    precio_unitario: z
-        .number()
-        .nonnegative({ message: "El precio unitario no puede ser negativo." }),
+    precio_unitario: importeSchema,
     porcentaje_iva: porcentajeIvaSchema.default(21),
 });
 
@@ -108,7 +113,7 @@ export const crearTransaccionSchema = z.object({
     tipo: z.enum(TIPOS_TRANSACCION),
     concepto: z.string().min(1, { message: "El concepto no puede estar vacio." }),
     descripcion: z.string().optional(),
-    importe: z.number().positive({
+    importe: importeSchema.refine((value) => value > 0, {
         message: "El importe siempre es positivo; el signo lo determina 'tipo'.",
     }),
     porcentaje_iva: porcentajeIvaSchema.default(0),
@@ -120,7 +125,7 @@ export const actualizarTransaccionSchema = z
         tipo: z.enum(TIPOS_TRANSACCION).optional(),
         concepto: z.string().min(1).optional(),
         descripcion: z.string().optional(),
-        importe: z.number().positive().optional(),
+        importe: importeSchema.refine((value) => value > 0).optional(),
         porcentaje_iva: porcentajeIvaSchema.optional(),
         fecha: fechaSchema.optional(),
     })

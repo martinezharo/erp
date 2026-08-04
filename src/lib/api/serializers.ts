@@ -7,6 +7,8 @@
  * rediscover that convention from the SQL.
  */
 
+import { roundMoney } from "./numbers";
+
 interface LineaRow {
     id?: number;
     producto_id: number;
@@ -24,25 +26,25 @@ function num(value: number | string | null | undefined): number {
 
 /** Rounds to cents, keeping the JSON free of float noise like 12.340000000001. */
 function money(value: number): number {
-    return Math.round(value * 100) / 100;
+    return roundMoney(value);
 }
 
 function serializeLinea(row: LineaRow) {
-    const precio = num(row.precio_unitario_venta ?? row.precio_unitario_compra);
+    const precio = money(num(row.precio_unitario_venta ?? row.precio_unitario_compra));
     const iva = num(row.porcentaje_iva);
-    const total = precio * row.unidades;
-    const base = total / (1 + iva / 100);
+    const total = money(precio * row.unidades);
+    const base = money(total / (1 + iva / 100));
 
     return {
         id: row.id,
         producto_id: row.producto_id,
         producto: row.producto?.nombre ?? null,
         unidades: row.unidades,
-        precio_unitario: money(precio),
+        precio_unitario: precio,
         porcentaje_iva: iva,
-        total_base: money(base),
+        total_base: base,
         total_iva: money(total - base),
-        total: money(total),
+        total,
     };
 }
 
@@ -81,9 +83,9 @@ export function serializeCompra(row: any) {
 }
 
 export function serializeTransaccion(row: any) {
-    const importe = num(row.importe);
+    const importe = money(num(row.importe));
     const iva = num(row.porcentaje_iva);
-    const base = importe / (1 + iva / 100);
+    const base = money(importe / (1 + iva / 100));
 
     return {
         id: row.id,
@@ -93,9 +95,9 @@ export function serializeTransaccion(row: any) {
         descripcion: row.descripcion ?? null,
         fecha: row.fecha,
         porcentaje_iva: iva,
-        importe_base: money(base),
+        importe_base: base,
         importe_iva: money(importe - base),
-        importe: money(importe),
+        importe,
     };
 }
 

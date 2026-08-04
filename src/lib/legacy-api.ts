@@ -1,7 +1,7 @@
 import type { APIContext } from "astro";
 import { createBackend, type BackendClient } from "./convex";
 import { fromConvexError, ApiError } from "./api/errors";
-import { getAuthenticatedSupabase, isDemoMode } from "./supabase";
+import { isDemoMode } from "./supabase";
 
 export function jsonResponse(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), {
@@ -21,8 +21,7 @@ export async function sessionBackend(
 ): Promise<{ backend: BackendClient; userId: string } | null> {
     if (isDemoMode) return null;
 
-    const supabase = getAuthenticatedSupabase(context.cookies);
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = context.locals.user;
     if (!user) return null;
 
     return {

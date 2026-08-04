@@ -7,16 +7,12 @@
 RLS, the RPC/trigger tests, the VAT arithmetic and the pre-push hook are done
 (PR #3). Still open:
 
-- [ ] **Unify the legacy routes.** Six under `src/pages/api/` call `getUser()`
-      for themselves and ten do not. Since the middleware validates the session
-      and puts the user on `locals`, the six are redundant — and the
-      inconsistency is worse than either choice, because it is impossible to
-      tell by reading one route whether it is protected. Delete the local checks
-      and read `locals.user`.
-- [ ] **Serializer and Zod rounding.** `lib/api/serializers.ts` and
-      `schemas.ts`. The database side of the VAT arithmetic is now covered by
-      `tests/rls/rpc-transactions.test.ts`; what the API hands back after
-      rounding is not.
+- [x] **Unify the legacy routes.** All browser API routes now reuse the user
+      validated by middleware through `sessionBackend`; no route performs a
+      second `getUser()` call.
+- [x] **Serializer and Zod rounding.** `lib/api/serializers.ts` and
+      `schemas.ts` normalize monetary inputs to cents and keep base, VAT and
+      gross output internally consistent, with unit coverage at rounding edges.
 - [ ] **Nothing notices when production drifts from `db-structure/`.** A policy
       called `Solo_Yo_Acceso_Total`, added by hand in the dashboard and absent
       from this repository, had been granting one hardcoded email full access to

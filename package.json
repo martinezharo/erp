@@ -36,6 +36,6 @@
         "vitest": "^4.1.10"
     },
     "simple-git-hooks": {
-        "pre-push": "npm run check && npm test"
+        "pre-push": "pnpm run check && pnpm run test"
     }
 }
