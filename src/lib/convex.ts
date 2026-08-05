@@ -77,24 +77,76 @@ export class BackendClient {
         );
     }
 
-    createProduct(projectId: number, name: string) {
-        return this.mutation<{ id: number; proyecto_id: number; nombre: string }>(
+    createProduct(projectId: number, name: string, wallapopTitle?: string) {
+        return this.mutation<{
+            id: number;
+            proyecto_id: number;
+            nombre: string;
+            titulo_wallapop: string | null;
+        }>(
             api.domain.createProduct,
-            this.args({ projectLegacyId: projectId, name }),
+            this.args({
+                projectLegacyId: projectId,
+                name,
+                ...(wallapopTitle ? { wallapopTitle } : {}),
+            }),
+        );
+    }
+
+    updateProductWallapopTitle(projectId: number, productId: number, wallapopTitle: string) {
+        return this.mutation<{
+            id: number;
+            proyecto_id: number;
+            nombre: string;
+            titulo_wallapop: string;
+        }>(
+            api.domain.updateProductWallapopTitle,
+            this.args({
+                projectLegacyId: projectId,
+                productLegacyId: productId,
+                wallapopTitle,
+            }),
         );
     }
 
     getProduct(projectId: number, productId: number) {
-        return this.query<{ id: number; proyecto_id: number; nombre: string }>(
+        return this.query<{
+            id: number;
+            proyecto_id: number;
+            nombre: string;
+            titulo_wallapop: string | null;
+        }>(
             api.domain.getProduct,
             this.args({ projectLegacyId: projectId, productLegacyId: productId }),
         );
     }
 
     getProductGlobal(productId: number) {
-        return this.query<{ id: number; proyecto_id: number; nombre: string } | null>(
+        return this.query<{
+            id: number;
+            proyecto_id: number;
+            nombre: string;
+            titulo_wallapop: string | null;
+        } | null>(
             api.domain.getProductGlobal,
             this.args({ productLegacyId: productId }),
+        );
+    }
+
+    listCustomers(values: {
+        projectId: number;
+        page?: number;
+        pageSize?: number;
+        search?: string;
+    }): Promise<{ data: Array<Record<string, unknown>>; count: number }> {
+        return this.query(
+            api.domain.listCustomers,
+            this.args({
+                projectLegacyId: values.projectId,
+                page: values.page ?? 1,
+                pageSize: values.pageSize ?? 20,
+                ...(values.search ? { search: values.search } : {}),
+            }),
         );
     }
 
@@ -140,6 +192,38 @@ export class BackendClient {
                 channel: values.channel,
                 status: values.status,
                 items: values.items,
+            }),
+        );
+    }
+
+    importWallapopSale(values: {
+        projectId: number;
+        originId: string;
+        date: string;
+        customerName: string;
+        wallapopTitle: string;
+        totalAmount: number;
+        units: number;
+        vatRate: number;
+        status: string;
+    }): Promise<{
+        id: number;
+        created: boolean;
+        customerId?: number;
+        productId?: number;
+    }> {
+        return this.mutation(
+            api.domain.importWallapopSale,
+            this.args({
+                projectLegacyId: values.projectId,
+                originId: values.originId,
+                date: values.date,
+                customerName: values.customerName,
+                wallapopTitle: values.wallapopTitle,
+                totalAmount: values.totalAmount,
+                units: values.units,
+                vatRate: values.vatRate,
+                status: values.status,
             }),
         );
     }

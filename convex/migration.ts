@@ -100,11 +100,13 @@ export const importProducts = mutation({
       const project = await projectByLegacyId(ctx, projectLegacyId);
       if (!project) fail("validation_error", `Project ${projectLegacyId} is missing.`);
       const existing = await existingByLegacyId(ctx, "products", legacyId);
+      const wallapopTitle = stringValue(row.titulo_wallapop).trim();
       const values = {
         legacyId,
         projectId: project._id,
         projectLegacyId,
         name: stringValue(row.nombre),
+        ...(wallapopTitle ? { wallapopTitle } : {}),
       };
       if (existing) await ctx.db.patch(existing._id, values);
       else await ctx.db.insert("products", values);

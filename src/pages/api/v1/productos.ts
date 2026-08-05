@@ -34,7 +34,11 @@ export const POST: APIRoute = (context) =>
         const projectId = resolveProjectId(principal, body.proyecto_id);
 
         return withIdempotency(context, principal, "POST /api/v1/productos", body, async () => {
-            const data = await principal.backend!.createProduct(projectId, body.nombre);
+            const data = await principal.backend!.createProduct(
+                projectId,
+                body.nombre,
+                body.titulo_wallapop,
+            );
             return json({ data }, 201);
         });
     });

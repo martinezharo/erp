@@ -51,10 +51,31 @@ export default defineSchema({
     projectId: v.id("projects"),
     projectLegacyId: v.number(),
     name: v.string(),
+    wallapopTitle: v.optional(v.string()),
   })
     .index("by_legacy_id", ["legacyId"])
     .index("by_project_name", ["projectId", "name"])
-    .index("by_project_legacy", ["projectLegacyId", "legacyId"]),
+    .index("by_project_legacy", ["projectLegacyId", "legacyId"])
+    .index("by_project_wallapop_title", ["projectId", "wallapopTitle"]),
+
+  customers: defineTable({
+    legacyId: v.number(),
+    projectId: v.id("projects"),
+    projectLegacyId: v.number(),
+    name: v.string(),
+    normalizedName: v.string(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_legacy_id", ["legacyId"])
+    .index("by_project_name", ["projectId", "name"])
+    .index("by_project_normalized_name", ["projectId", "normalizedName"]),
+
+  customerCounts: defineTable({
+    projectId: v.id("projects"),
+    projectLegacyId: v.number(),
+    count: v.number(),
+  }).index("by_project", ["projectId"]),
 
   sales: defineTable({
     legacyId: v.number(),
@@ -63,10 +84,14 @@ export default defineSchema({
     date: v.string(),
     channel: v.string(),
     status: saleStatus,
+    customerId: v.optional(v.id("customers")),
+    origin: v.optional(v.string()),
+    originId: v.optional(v.string()),
   })
     .index("by_legacy_id", ["legacyId"])
     .index("by_project_date", ["projectId", "date"])
-    .index("by_project_legacy", ["projectLegacyId", "legacyId"]),
+    .index("by_project_legacy", ["projectLegacyId", "legacyId"])
+    .index("by_project_origin", ["projectId", "origin"]),
 
   saleLines: defineTable({
     legacyId: v.number(),

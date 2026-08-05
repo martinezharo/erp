@@ -10,6 +10,17 @@ export function jsonResponse(body: unknown, status = 200): Response {
     });
 }
 
+/** Accepts the string ids emitted by HTML dataset attributes and JSON ids. */
+export function parsePositiveInteger(value: unknown): number | null {
+    const parsed =
+        typeof value === "number"
+            ? value
+            : typeof value === "string" && value.trim() !== ""
+              ? Number(value)
+              : Number.NaN;
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 export function demoResponse(context: APIContext, emptyBody: unknown = null): Response {
     if (emptyBody !== null) return jsonResponse(emptyBody);
     return jsonResponse({ error: context.locals.t("api.demoUnavailable") }, 403);

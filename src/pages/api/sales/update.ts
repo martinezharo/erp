@@ -1,5 +1,12 @@
 import type { APIRoute } from "astro";
-import { backendError, demoResponse, jsonResponse, sessionBackend, unauthorizedResponse } from "../../../lib/legacy-api";
+import {
+    backendError,
+    demoResponse,
+    jsonResponse,
+    parsePositiveInteger,
+    sessionBackend,
+    unauthorizedResponse,
+} from "../../../lib/legacy-api";
 import { isDemoMode } from "../../../lib/supabase";
 
 export const PUT: APIRoute = async (context) => {
@@ -9,17 +16,28 @@ export const PUT: APIRoute = async (context) => {
 
     try {
         const body = await context.request.json() as {
-            id?: number;
-            date?: string;
-            channel?: string;
-            projectId?: number;
+            id?: unknown;
+            date?: unknown;
+            channel?: unknown;
+            projectId?: unknown;
             items?: Array<{ productId: number; units: number; price: number; tax?: number }>;
         };
-        if (!body.id || !body.date || !body.channel || !body.projectId || !body.items?.length) {
+        const id = parsePositiveInteger(body.id);
+        const projectId = parsePositiveInteger(body.projectId);
+        if (
+            id === null ||
+            projectId === null ||
+            typeof body.date !== "string" ||
+            !body.date ||
+            typeof body.channel !== "string" ||
+            !body.channel ||
+            !Array.isArray(body.items) ||
+            body.items.length === 0
+        ) {
             return jsonResponse({ error: "Missing required fields" }, 400);
         }
 
-        await session.backend.updateSale(body.id, {
+        await session.backend.updateSale(id, {
             date: body.date,
             channel: body.channel,
             items: body.items.map((item) => ({

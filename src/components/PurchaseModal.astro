@@ -463,7 +463,7 @@ const { t } = Astro.locals;
 
             const isEdit = !!form.dataset.editingId;
             const payload = {
-                id: isEdit ? form.dataset.editingId : undefined,
+                id: isEdit ? Number(form.dataset.editingId) : undefined,
                 projectId: activeProjectId,
                 date: formData.get("fecha"),
                 estado: formData.get("estado"),

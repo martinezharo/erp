@@ -139,6 +139,30 @@ export const actualizarTransaccionSchema = z
 export const crearProductoSchema = z.object({
     proyecto_id: idSchema.optional(),
     nombre: z.string().min(1, { message: "El nombre no puede estar vacio." }),
+    titulo_wallapop: z.string().trim().min(1).max(300).optional(),
+});
+
+export const actualizarProductoSchema = z.object({
+    proyecto_id: idSchema.optional(),
+    titulo_wallapop: z.string().trim().min(1).max(300),
+});
+
+// -----------------------------------------------------------------------------
+// Wallapop import and customers
+// -----------------------------------------------------------------------------
+export const importarVentaWallapopSchema = z.object({
+    proyecto_id: idSchema.optional(),
+    /** Stable Gmail message id; it is also the idempotency key at the source. */
+    origen_id: z.string().trim().min(1).max(500),
+    fecha: fechaSchema,
+    comprador_nombre: z.string().trim().min(1).max(200),
+    titulo_wallapop: z.string().trim().min(1).max(300),
+    importe_total: z.number().positive({ message: "El importe total debe ser mayor que cero." }).transform(roundMoney),
+    unidades: z.number().int().positive().default(1),
+    porcentaje_iva: porcentajeIvaSchema.default(21),
+    // A sale is pending until the seller ships it; pending sales do not count
+    // as revenue in the ERP financial views.
+    estado: z.enum(ESTADOS_VENTA).default("pendiente"),
 });
 
 export const ajustarStockSchema = z.object({
@@ -160,6 +184,11 @@ export const ajustarStockSchema = z.object({
 export const paginacionSchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     page_size: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const filtrosClientesSchema = paginacionSchema.extend({
+    proyecto_id: z.coerce.number().int().positive().optional(),
+    buscar: z.string().trim().min(1).optional(),
 });
 
 export const filtrosSchema = paginacionSchema.extend({
