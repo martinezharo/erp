@@ -471,7 +471,7 @@ const { t } = Astro.locals;
                 date: formData.get("fecha"),
                 channel: formData.get("canal"),
                 items: items,
-                id: isEdit ? formVenta.dataset.editingId : undefined,
+                id: isEdit ? Number(formVenta.dataset.editingId) : undefined,
             };
 
             const endpoint = isEdit ? "/api/sales/update" : "/api/sales/create";

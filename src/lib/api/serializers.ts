@@ -65,6 +65,12 @@ export function serializeVenta(row: any) {
         fecha: row.fecha,
         canal: row.canal,
         estado: row.estado,
+        cliente_id: row.cliente_id ?? row.cliente?.id ?? null,
+        cliente: row.cliente
+            ? { id: row.cliente.id, nombre: row.cliente.nombre }
+            : null,
+        origen: row.origen ?? "manual",
+        origen_id: row.origen_id ?? null,
         items,
         totales: totales(items),
     };

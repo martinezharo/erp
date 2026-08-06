@@ -85,7 +85,38 @@ async function otherTransactionsForProject(
     .collect();
 }
 
+function normalizeCustomerName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+async function customerCountForProject(
+  ctx: QueryCtx | MutationCtx,
+  projectId: Id<"projects">,
+): Promise<number> {
+  const counter = await ctx.db
+    .query("customerCounts")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .unique();
+  return counter?.count ?? 0;
+}
+
+async function saleByOrigin(
+  ctx: QueryCtx | MutationCtx,
+  projectId: Id<"projects">,
+  origin: string,
+  originId: string,
+) {
+  return await ctx.db
+    .query("sales")
+    .withIndex("by_project_origin", (q) =>
+      q.eq("projectId", projectId).eq("origin", origin),
+    )
+    .filter((q) => q.eq(q.field("originId"), originId))
+    .first();
+}
+
 async function saleRow(ctx: QueryCtx | MutationCtx, sale: Doc<"sales">) {
+  const customer = sale.customerId ? await ctx.db.get(sale.customerId) : null;
   const lines = await ctx.db
     .query("saleLines")
     .withIndex("by_sale", (q) => q.eq("saleId", sale._id))
@@ -111,6 +142,10 @@ async function saleRow(ctx: QueryCtx | MutationCtx, sale: Doc<"sales">) {
     fecha: sale.date,
     canal: sale.channel,
     estado: sale.status,
+    cliente_id: customer?.legacyId ?? null,
+    cliente: customer ? { id: customer.legacyId, nombre: customer.name } : null,
+    origen: sale.origin ?? "manual",
+    origen_id: sale.originId ?? null,
     venta_detalle: details,
   };
 }
@@ -193,6 +228,7 @@ export const listProducts = query({
         id: product.legacyId,
         proyecto_id: product.projectLegacyId,
         nombre: product.name,
+        titulo_wallapop: product.wallapopTitle ?? null,
       })),
       count: all.length,
     };
@@ -204,20 +240,114 @@ export const createProduct = mutation({
     ...bridgeArgs,
     projectLegacyId: v.number(),
     name: v.string(),
+    wallapopTitle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     check(args);
     const project = await requireProject(ctx, args.actor, args.projectLegacyId);
     const name = args.name.trim();
     if (!name) fail("validation_error", "Product name cannot be empty.");
+    const wallapopTitle = args.wallapopTitle?.trim() || undefined;
+    if (wallapopTitle) {
+      const mapped = await ctx.db
+        .query("products")
+        .withIndex("by_project_wallapop_title", (q) =>
+          q.eq("projectId", project._id).eq("wallapopTitle", wallapopTitle),
+        )
+        .first();
+      if (mapped) fail("conflict", "That Wallapop title is already mapped to a product.");
+    }
     const legacyId = await nextLegacyId(ctx, "products");
     const id = await ctx.db.insert("products", {
       legacyId,
       projectId: project._id,
       projectLegacyId: project.legacyId,
       name,
+      ...(wallapopTitle ? { wallapopTitle } : {}),
     });
-    return { id: legacyId, proyecto_id: project.legacyId, nombre: name, _id: id };
+    return {
+      id: legacyId,
+      proyecto_id: project.legacyId,
+      nombre: name,
+      titulo_wallapop: wallapopTitle ?? null,
+      _id: id,
+    };
+  },
+});
+
+export const updateProductWallapopTitle = mutation({
+  args: {
+    ...bridgeArgs,
+    projectLegacyId: v.number(),
+    productLegacyId: v.number(),
+    wallapopTitle: v.string(),
+  },
+  handler: async (ctx, args) => {
+    check(args);
+    const product = await requireProduct(
+      ctx,
+      args.actor,
+      args.projectLegacyId,
+      args.productLegacyId,
+    );
+    const wallapopTitle = args.wallapopTitle.trim();
+    if (!wallapopTitle) fail("validation_error", "Wallapop title cannot be empty.");
+
+    const mapped = await ctx.db
+      .query("products")
+      .withIndex("by_project_wallapop_title", (q) =>
+        q.eq("projectId", product.projectId).eq("wallapopTitle", wallapopTitle),
+      )
+      .first();
+    if (mapped && mapped._id !== product._id) {
+      fail("conflict", "That Wallapop title is already mapped to a product.");
+    }
+
+    await ctx.db.patch(product._id, { wallapopTitle });
+    return {
+      id: product.legacyId,
+      proyecto_id: product.projectLegacyId,
+      nombre: product.name,
+      titulo_wallapop: wallapopTitle,
+    };
+  },
+});
+
+export const listCustomers = query({
+  args: {
+    ...bridgeArgs,
+    projectLegacyId: v.number(),
+    page: v.number(),
+    pageSize: v.number(),
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    check(args);
+    const project = await requireProject(ctx, args.actor, args.projectLegacyId);
+    const search = args.search?.trim().toLowerCase();
+    const from = Math.max(0, (args.page - 1) * args.pageSize);
+    const scanLimit = search
+      ? 10_000
+      : Math.min(Math.max(from + args.pageSize + 1, args.pageSize * 10), 10_000);
+    const candidates = await ctx.db
+      .query("customers")
+      .withIndex("by_project_name", (q) => q.eq("projectId", project._id))
+      .take(scanLimit);
+    const rows = search
+      ? candidates.filter((customer) => customer.normalizedName.includes(search))
+      : candidates;
+    const count = search ? rows.length : await customerCountForProject(ctx, project._id);
+
+    return {
+      data: rows.slice(from, from + args.pageSize).map((customer) => ({
+        id: customer.legacyId,
+        proyecto_id: customer.projectLegacyId,
+        nombre: customer.name,
+        creado_en: customer.createdAt,
+        actualizado_en: customer.updatedAt,
+      })),
+      count,
+    };
   },
 });
 
@@ -235,7 +365,12 @@ export const getProduct = query({
       args.projectLegacyId,
       args.productLegacyId,
     );
-    return { id: product.legacyId, proyecto_id: product.projectLegacyId, nombre: product.name };
+    return {
+      id: product.legacyId,
+      proyecto_id: product.projectLegacyId,
+      nombre: product.name,
+      titulo_wallapop: product.wallapopTitle ?? null,
+    };
   },
 });
 
@@ -253,6 +388,7 @@ export const getProductGlobal = query({
       id: product.legacyId,
       proyecto_id: product.projectLegacyId,
       nombre: product.name,
+      titulo_wallapop: product.wallapopTitle ?? null,
     };
   },
 });
@@ -367,6 +503,124 @@ export const createSale = mutation({
     const sale = (await ctx.db.get(saleId))!;
     await insertSaleLines(ctx, sale, args.items);
     return legacyId;
+  },
+});
+
+export const importWallapopSale = mutation({
+  args: {
+    ...bridgeArgs,
+    projectLegacyId: v.number(),
+    originId: v.string(),
+    date: v.string(),
+    customerName: v.string(),
+    wallapopTitle: v.string(),
+    totalAmount: v.number(),
+    units: v.number(),
+    vatRate: v.number(),
+    status: saleStatus,
+  },
+  handler: async (ctx, args) => {
+    check(args);
+    const project = await requireProject(ctx, args.actor, args.projectLegacyId);
+    const originId = args.originId.trim();
+    const customerName = args.customerName.trim();
+    const wallapopTitle = args.wallapopTitle.trim();
+
+    if (!originId || !customerName || !wallapopTitle) {
+      fail("validation_error", "Origin id, customer name and Wallapop title are required.");
+    }
+    if (!Number.isFinite(args.totalAmount) || args.totalAmount <= 0) {
+      fail("validation_error", "The total amount must be greater than zero.");
+    }
+    if (!Number.isInteger(args.units) || args.units <= 0) {
+      fail("validation_error", "Sale units must be positive integers.");
+    }
+
+    const existing = await saleByOrigin(ctx, project._id, "Wallapop", originId);
+    if (existing) return { id: existing.legacyId, created: false };
+
+    const product = await ctx.db
+      .query("products")
+      .withIndex("by_project_wallapop_title", (q) =>
+        q.eq("projectId", project._id).eq("wallapopTitle", wallapopTitle),
+      )
+      .first();
+    if (!product) {
+      fail("not_found", `No product is mapped to the Wallapop title: ${wallapopTitle}`);
+    }
+
+    const normalizedName = normalizeCustomerName(customerName);
+    let customer = await ctx.db
+      .query("customers")
+      .withIndex("by_project_normalized_name", (q) =>
+        q.eq("projectId", project._id).eq("normalizedName", normalizedName),
+      )
+      .first();
+    const isNewCustomer = !customer;
+    const now = new Date().toISOString();
+
+    if (customer) {
+      await ctx.db.patch(customer._id, { name: customerName, updatedAt: now });
+    } else {
+      const legacyId = await nextLegacyId(ctx, "customers");
+      const customerId = await ctx.db.insert("customers", {
+        legacyId,
+        projectId: project._id,
+        projectLegacyId: project.legacyId,
+        name: customerName,
+        normalizedName,
+        createdAt: now,
+        updatedAt: now,
+      });
+      customer = (await ctx.db.get(customerId))!;
+    }
+
+    const counter = await ctx.db
+      .query("customerCounts")
+      .withIndex("by_project", (q) => q.eq("projectId", project._id))
+      .unique();
+    if (counter) {
+      if (counter.count < 1) {
+        await ctx.db.patch(counter._id, { count: 1 });
+      } else if (isNewCustomer) {
+        await ctx.db.patch(counter._id, { count: counter.count + 1 });
+      }
+    } else {
+      await ctx.db.insert("customerCounts", {
+        projectId: project._id,
+        projectLegacyId: project.legacyId,
+        count: 1,
+      });
+    }
+
+    const legacyId = await nextLegacyId(ctx, "sales");
+    const saleId = await ctx.db.insert("sales", {
+      legacyId,
+      projectId: project._id,
+      projectLegacyId: project.legacyId,
+      date: args.date,
+      channel: "Wallapop",
+      status: args.status,
+      customerId: customer._id,
+      origin: "Wallapop",
+      originId,
+    });
+    const sale = (await ctx.db.get(saleId))!;
+    await insertSaleLines(ctx, sale, [
+      {
+        productId: product.legacyId,
+        units: args.units,
+        unitPrice: args.totalAmount / args.units,
+        vatRate: args.vatRate,
+      },
+    ]);
+
+    return {
+      id: legacyId,
+      created: true,
+      customerId: customer.legacyId,
+      productId: product.legacyId,
+    };
   },
 });
 

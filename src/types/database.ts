@@ -13,6 +13,15 @@ export interface Producto {
     id: number;
     proyecto_id: number;
     nombre: string;
+    titulo_wallapop?: string | null;
+}
+
+export interface Cliente {
+    id: number;
+    proyecto_id: number;
+    nombre: string;
+    creado_en: string;
+    actualizado_en: string;
 }
 
 export interface Compra {
@@ -39,6 +48,10 @@ export interface Venta {
     fecha: string;
     canal: string;
     estado: EstadoVenta;
+    cliente_id?: number | null;
+    cliente?: { id: number; nombre: string } | null;
+    origen?: string;
+    origen_id?: string | null;
 }
 
 export interface VentaDetalle {

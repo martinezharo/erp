@@ -200,8 +200,27 @@ export function buildOpenApiDocument(serverUrl: string) {
             fecha: { type: "string" },
             canal: { type: "string" },
             estado: { type: "string", enum: [...ESTADOS_VENTA] },
+            cliente_id: { type: "integer", nullable: true },
+            cliente: {
+                type: "object",
+                nullable: true,
+                properties: { id: { type: "integer" }, nombre: { type: "string" } },
+            },
+            origen: { type: "string" },
+            origen_id: { type: "string", nullable: true },
             items: { type: "array", items: lineaRespuestaSchema },
             totales: totalesSchema,
+        },
+    };
+
+    const clienteSchema = {
+        type: "object",
+        properties: {
+            id: { type: "integer" },
+            proyecto_id: { type: "integer" },
+            nombre: { type: "string" },
+            creado_en: { type: "string" },
+            actualizado_en: { type: "string" },
         },
     };
 
@@ -288,6 +307,7 @@ export function buildOpenApiDocument(serverUrl: string) {
                 Error: errorSchema,
                 Linea: lineaSchema,
                 Venta: ventaSchema,
+                Cliente: clienteSchema,
                 Compra: compraSchema,
                 Transaccion: transaccionSchema,
                 Stock: stockSchema,
@@ -339,7 +359,7 @@ export function buildOpenApiDocument(serverUrl: string) {
                         ...paginacionParams,
                     ],
                     responses: {
-                        ...listResponse({ type: "object", properties: { id: { type: "integer" }, proyecto_id: { type: "integer" }, nombre: { type: "string" } } }),
+                        ...listResponse({ type: "object", properties: { id: { type: "integer" }, proyecto_id: { type: "integer" }, nombre: { type: "string" }, titulo_wallapop: { type: "string", nullable: true } } }),
                         ...errorResponses,
                     },
                 },
@@ -357,6 +377,7 @@ export function buildOpenApiDocument(serverUrl: string) {
                                     properties: {
                                         proyecto_id: { type: "integer" },
                                         nombre: { type: "string", minLength: 1 },
+                                        titulo_wallapop: { type: "string", nullable: true },
                                     },
                                 },
                             },
@@ -366,6 +387,32 @@ export function buildOpenApiDocument(serverUrl: string) {
                         ...itemResponse({ type: "object" }, "201", "Creado"),
                         ...escrituraResponses,
                     },
+                },
+            },
+
+            "/api/v1/productos/{id}": {
+                patch: {
+                    operationId: "actualizarProductoWallapop",
+                    summary: "Asigna el título de Wallapop a un producto",
+                    parameters: [
+                        { name: "id", in: "path", required: true, schema: { type: "integer" } },
+                    ],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    required: ["titulo_wallapop"],
+                                    properties: {
+                                        proyecto_id: { type: "integer" },
+                                        titulo_wallapop: { type: "string", minLength: 1 },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    responses: { ...itemResponse({ type: "object" }), ...errorResponses },
                 },
             },
 
@@ -412,6 +459,52 @@ export function buildOpenApiDocument(serverUrl: string) {
                         },
                     },
                     responses: { ...itemResponse(ventaSchema, "201", "Creada"), ...escrituraResponses },
+                },
+            },
+
+            "/api/v1/clientes": {
+                get: {
+                    operationId: "listarClientes",
+                    summary: "Lista clientes conocidos",
+                    parameters: [
+                        proyectoIdParam,
+                        { name: "buscar", in: "query", schema: { type: "string" }, description: "Coincidencia parcial en el nombre." },
+                        ...paginacionParams,
+                    ],
+                    responses: { ...listResponse(clienteSchema), ...errorResponses },
+                },
+            },
+
+            "/api/v1/importaciones/wallapop": {
+                post: {
+                    operationId: "importarVentaWallapop",
+                    summary: "Importa una venta confirmada de Wallapop",
+                    description:
+                        "Casa el título exacto del anuncio con un producto, crea o reutiliza el cliente por nombre y registra la venta y su movimiento de stock de forma atómica. Las ventas importadas quedan pendientes hasta el envío.",
+                    parameters: [idempotencyHeader],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    required: ["origen_id", "fecha", "comprador_nombre", "titulo_wallapop", "importe_total"],
+                                    properties: {
+                                        proyecto_id: { type: "integer" },
+                                        origen_id: { type: "string", description: "Id estable del mensaje Gmail." },
+                                        fecha: fechaSchema,
+                                        comprador_nombre: { type: "string" },
+                                        titulo_wallapop: { type: "string" },
+                                        importe_total: { type: "number", exclusiveMinimum: 0 },
+                                        unidades: { type: "integer", minimum: 1, default: 1 },
+                                        porcentaje_iva: { type: "number", minimum: 0, maximum: 100, default: 21 },
+                                        estado: { type: "string", enum: [...ESTADOS_VENTA], default: "pendiente" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    responses: { ...itemResponse(ventaSchema, "201", "Importada"), ...escrituraResponses },
                 },
             },
 

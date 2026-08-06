@@ -51,6 +51,7 @@ export function vatPart(grossCents: number, rate: number): number {
 type LegacyTable =
   | "projects"
   | "products"
+  | "customers"
   | "sales"
   | "saleLines"
   | "purchases"

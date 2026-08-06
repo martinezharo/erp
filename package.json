@@ -9,6 +9,7 @@
         "astro": "astro",
         "check": "astro check",
         "test": "vitest run",
+        "test:convex": "vitest run --config vitest.convex.config.ts",
         "test:watch": "vitest",
         "api:key": "node scripts/create-api-key.mjs",
         "migrate:supabase": "node scripts/migrate-supabase-to-convex.mjs",
@@ -31,9 +32,12 @@
         "zod": "^4.4.3"
     },
     "devDependencies": {
+        "@edge-runtime/vm": "^5.0.0",
         "@types/pg": "^8.20.0",
+        "convex-test": "^0.0.55",
         "pg": "^8.22.0",
         "simple-git-hooks": "^2.13.1",
+        "vite": "6.4.1",
         "vitest": "^4.1.10"
     },
     "simple-git-hooks": {

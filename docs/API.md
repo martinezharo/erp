@@ -88,6 +88,8 @@ business without exposing the rest.
 | `GET`    | `/api/v1/proyectos`           | Accessible projects. Start here.                 |
 | `GET`    | `/api/v1/productos`           | Product catalog. Supports the `buscar` filter.   |
 | `POST`   | `/api/v1/productos`           | Creates a product.                               |
+| `PATCH`  | `/api/v1/productos/{id}`      | Assigns a Wallapop listing title to a product.   |
+| `GET`    | `/api/v1/clientes`            | Known customers for a project.                  |
 | `GET`    | `/api/v1/ventas`              | Sales. Supports date, status, and channel filters. |
 | `POST`   | `/api/v1/ventas`              | Records a sale transactionally.                  |
 | `GET`    | `/api/v1/ventas/{id}`         | Returns sale details.                            |
@@ -104,6 +106,7 @@ business without exposing the rest.
 | `GET`    | `/api/v1/stock`               | Stock and days of inventory coverage.            |
 | `POST`   | `/api/v1/stock/ajustes`       | Applies a manual stock adjustment.               |
 | `GET`    | `/api/v1/finanzas`            | Income, expenses, profit, and VAT balance.        |
+| `POST`   | `/api/v1/importaciones/wallapop` | Imports a confirmed Wallapop sale from Gmail. |
 
 List endpoints always return the same envelope:
 
@@ -128,6 +131,11 @@ move stock. A return is a status `PATCH` to `devuelta`, not a deletion.
 **Stock moves automatically.** Database triggers generate movements for sales
 and purchases. `POST /api/v1/stock/ajustes` is only for manual corrections
 (breakage, stock counts, and giveaways).
+
+**Wallapop titles are exact mappings.** The Gmail workflow sends the complete
+listing title. It must first be assigned to the matching product through
+`PATCH /api/v1/productos/{id}`; an unknown title is rejected instead of being
+silently attached to the wrong product.
 
 **Dates accept `YYYY-MM-DD` or ISO 8601.** A date without a time is interpreted
 as midnight.
@@ -236,6 +244,34 @@ curl -X PATCH https://your-erp/api/v1/ventas/42 \
   -H "Content-Type: application/json" \
   -d '{"estado": "devuelta"}'
 ```
+
+### Import a Wallapop sale
+
+The n8n workflow in `automations/n8n/wallapop-gmail-to-erp.json` searches for
+confirmation emails, parses both plain-text and HTML bodies, and calls the
+import endpoint. It sends the Gmail message id as `origen_id` and as
+`Idempotency-Key`, so polling and delivery retries do not create duplicate
+sales.
+
+```bash
+curl -X POST https://your-erp/api/v1/importaciones/wallapop \
+  -H "Authorization: Bearer erp_sk_..." \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: gmail-message-id" \
+  -d '{
+    "origen_id": "gmail-message-id",
+    "fecha": "2026-08-03",
+    "comprador_nombre": "Antonio R.",
+    "titulo_wallapop": "Mando Xiaomi XMRM-006 a Estrenar",
+    "importe_total": 3.49,
+    "unidades": 1,
+    "estado": "pendiente"
+  }'
+```
+
+The import creates or reuses a customer by normalized name and records the
+sale as `Wallapop`. It remains `pendiente` until shipment; the exact title is
+matched to the product before the sale and stock movement are written.
 
 ### Connect a Custom GPT or agent
 
