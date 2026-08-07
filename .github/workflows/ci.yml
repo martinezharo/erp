@@ -22,15 +22,15 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: 11.20.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
@@ -43,6 +43,9 @@ jobs:
 
       - name: Test
         run: pnpm run test
+
+      - name: Test Convex functions
+        run: pnpm run test:convex
 
       - name: Build
         run: pnpm run build
