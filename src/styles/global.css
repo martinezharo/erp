@@ -17,17 +17,10 @@
 }
 
 :root {
-  --background: oklch(0.98 0.01 245.8);
-  --foreground: oklch(0.2 0.03 245.8);
-  --border: oklch(0.92 0.02 245.8);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.15 0.03 245.8);
-    --foreground: oklch(0.95 0.02 245.8);
-    --border: oklch(0.25 0.03 245.8);
-  }
+  color-scheme: dark;
+  --background: oklch(0.15 0.03 245.8);
+  --foreground: oklch(0.95 0.02 245.8);
+  --border: oklch(0.25 0.03 245.8);
 }
 
 body {
