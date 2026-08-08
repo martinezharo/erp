@@ -19,26 +19,26 @@
         "prepare": "simple-git-hooks"
     },
     "dependencies": {
-        "@astrojs/check": "^0.9.6",
-        "@astrojs/cloudflare": "^12.6.12",
-        "@astrojs/node": "^9.5.3",
-        "@supabase/supabase-js": "^2.95.3",
-        "@tailwindcss/vite": "^4.1.18",
-        "astro": "^5.17.1",
+        "@astrojs/check": "^0.9.10",
+        "@astrojs/cloudflare": "^12.6.13",
+        "@astrojs/node": "^9.5.5",
+        "@supabase/supabase-js": "^2.112.2",
+        "@tailwindcss/vite": "^4.3.3",
+        "astro": "^5.18.2",
         "chart.js": "^4.5.1",
         "convex": "^1.43.0",
-        "nanostores": "^1.1.0",
-        "tailwindcss": "^4.1.18",
+        "nanostores": "^1.4.2",
+        "tailwindcss": "^4.3.3",
         "typescript": "^5.9.3",
         "zod": "^4.4.3"
     },
     "devDependencies": {
         "@edge-runtime/vm": "^5.0.0",
-        "@types/pg": "^8.20.0",
+        "@types/pg": "^8.20.4",
         "convex-test": "^0.0.55",
         "pg": "^8.22.0",
         "simple-git-hooks": "^2.13.1",
-        "vite": "6.4.1",
+        "vite": "6.4.3",
         "vitest": "^4.1.10"
     },
     "simple-git-hooks": {

@@ -3,3 +3,7 @@ allowBuilds:
   sharp: true
   simple-git-hooks: true
   workerd: true
+
+overrides:
+  "undici@>=7.0.0 <7.29.0": ">=7.29.0"
+  "ws@>=8.0.0 <8.21.0": ">=8.21.0"
