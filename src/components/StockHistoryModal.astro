@@ -110,6 +110,7 @@ const { t } = Astro.locals;
 </dialog>
 
 <script>
+    import { escapeHtml } from "../lib/html";
     import type { MovimientoStock } from '../types/database';
     import { t, locale } from '../i18n/client';
 
@@ -144,7 +145,7 @@ const { t } = Astro.locals;
                 if (response.ok) {
                     renderMovements(result.data, listEl);
                 } else {
-                    listEl.innerHTML = `<div class="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-center">Error: ${result.error}</div>`;
+                    listEl.innerHTML = `<div class="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-center">Error: ${escapeHtml(result.error)}</div>`;
                 }
             } catch (error) {
                 listEl.innerHTML = `<div class="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-center">${t('common.connectionError')}</div>`;
@@ -256,7 +257,7 @@ const { t } = Astro.locals;
                             ${icon}
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-white">${typeLabel}</p>
+                            <p class="text-sm font-medium text-white">${escapeHtml(typeLabel)}</p>
                             <p class="text-xs text-slate-500 font-mono">${new Date(mov.fecha).toLocaleDateString(locale)}</p>
                         </div>
                     </div>

@@ -120,6 +120,7 @@ const { t } = Astro.locals;
 </dialog>
 
 <script>
+    import { escapeHtml } from "../lib/html";
     import { t, locale } from '../i18n/client';
 
     document.addEventListener('astro:page-load', () => {
@@ -150,7 +151,7 @@ const { t } = Astro.locals;
                 if (response.ok) {
                     renderTable(result.data);
                 } else {
-                    tableBody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-red-400">Error: ${result.error}</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-red-400">Error: ${escapeHtml(result.error)}</td></tr>`;
                 }
             } catch (error) {
                 console.error("Error fetching history:", error);
@@ -234,12 +235,12 @@ const { t } = Astro.locals;
                 return `
                     <tr class="hover:bg-white/5 transition-colors">
                         <td class="px-4 py-3 text-slate-300">${formattedDate}</td>
-                        <td class="px-4 py-3 font-medium ${typeClass} capitalize">${typeLabel}</td>
+                        <td class="px-4 py-3 font-medium ${typeClass} capitalize">${escapeHtml(typeLabel)}</td>
                         <td class="px-4 py-3 text-right font-mono ${isPositive ? 'text-emerald-400' : 'text-red-400'}">
                             ${isPositive ? '+' : ''}${m.unidades}
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-slate-300">${formattedPrice}</td>
-                        <td class="px-4 py-3 text-slate-400">${m.canal || '-'}</td>
+                        <td class="px-4 py-3 text-slate-400">${escapeHtml(m.canal || '-')}</td>
                     </tr>
                 `;
             }).join('');
