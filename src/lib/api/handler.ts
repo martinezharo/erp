@@ -86,10 +86,14 @@ function canonicalize(value: unknown): string {
     return `{${entries.join(",")}}`;
 }
 
-async function hashRequest(endpoint: string, body: unknown): Promise<string> {
-    const data = new TextEncoder().encode(`${endpoint}\n${canonicalize(body)}`);
+async function hashText(value: string): Promise<string> {
+    const data = new TextEncoder().encode(value);
     const digest = await crypto.subtle.digest("SHA-256", data);
     return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashRequest(endpoint: string, body: unknown): Promise<string> {
+    return hashText(`${endpoint}\n${canonicalize(body)}`);
 }
 
 /** Marks a reservation row as still in flight; see the state machine below. */
@@ -122,10 +126,16 @@ export async function withIdempotency(
     if (!idempotencyKey) {
         return fn();
     }
+    if (idempotencyKey.length > 255) {
+        throw new ApiError("validation_error", "'Idempotency-Key' no puede superar 255 caracteres.");
+    }
 
+    // A caller-supplied key is only unique within that caller. Hashing the
+    // authenticated namespace prevents cross-account conflicts and replays.
+    const storageKey = await hashText(`${principal.idempotencyNamespace}\n${idempotencyKey}`);
     const requestHash = await hashRequest(endpoint, body);
     if (principal.backend) {
-        return withConvexIdempotency(principal, idempotencyKey, endpoint, requestHash, fn);
+        return withConvexIdempotency(principal, storageKey, endpoint, requestHash, fn);
     }
 
     const { supabase } = principal;
@@ -134,7 +144,7 @@ export async function withIdempotency(
     }
 
     const { error: insertError } = await supabase.from("idempotency_keys").insert({
-        idempotency_key: idempotencyKey,
+        idempotency_key: storageKey,
         api_key_id: principal.apiKeyId,
         endpoint,
         request_hash: requestHash,
@@ -153,7 +163,7 @@ export async function withIdempotency(
         const { data: existing } = await supabase
             .from("idempotency_keys")
             .select("request_hash, response_status, response_body")
-            .eq("idempotency_key", idempotencyKey)
+            .eq("idempotency_key", storageKey)
             .eq("endpoint", endpoint)
             .maybeSingle();
 
@@ -188,14 +198,14 @@ export async function withIdempotency(
     try {
         response = await fn();
     } catch (error) {
-        await releaseKey(principal, idempotencyKey, endpoint);
+        await releaseKey(principal, storageKey, endpoint);
         throw error;
     }
 
     // Only successful outcomes are worth replaying. Releasing the key on failure
     // lets the caller fix the payload and retry with the same key.
     if (!response.ok) {
-        await releaseKey(principal, idempotencyKey, endpoint);
+        await releaseKey(principal, storageKey, endpoint);
         return response;
     }
 
@@ -203,7 +213,7 @@ export async function withIdempotency(
     await supabase
         .from("idempotency_keys")
         .update({ response_status: response.status, response_body: stored })
-        .eq("idempotency_key", idempotencyKey)
+        .eq("idempotency_key", storageKey)
         .eq("endpoint", endpoint);
 
     return response;

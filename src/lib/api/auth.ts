@@ -24,6 +24,8 @@ export interface Principal {
     /** Pinned project, or null when the caller may act on any project. */
     projectId: number | null;
     apiKeyId: string | null;
+    /** Stable private namespace used to isolate idempotency records per caller. */
+    idempotencyNamespace: string;
     backend?: BackendClient;
     /** Compatibility field for the unit-test seam and auth-only fallback. */
     supabase?: SupabaseClient;
@@ -124,6 +126,7 @@ async function resolveLegacyApiKey(context: APIContext, rawKey: string): Promise
         scopes: (apiKey.scopes ?? []) as Scope[],
         projectId: apiKey.proyecto_id ?? null,
         apiKeyId: apiKey.id,
+        idempotencyNamespace: `api-key:${apiKey.id}`,
         supabase,
     };
 }
@@ -152,6 +155,7 @@ async function resolveConvexApiKey(context: APIContext, rawKey: string): Promise
         scopes: apiKey.scopes,
         projectId: apiKey.proyecto_id,
         apiKeyId: apiKey.id,
+        idempotencyNamespace: `api-key:${apiKey.id}`,
         backend: createBackend(context.locals, {
             kind: "api_key",
             ...(apiKey.proyecto_id !== null ? { projectLegacyId: apiKey.proyecto_id } : {}),
@@ -176,6 +180,7 @@ async function resolveSession(context: APIContext): Promise<Principal> {
             scopes: ["read", "write"],
             projectId: null,
             apiKeyId: null,
+            idempotencyNamespace: `session:${user.id}`,
             backend: createBackend(context.locals, { kind: "session", userId: user.id }),
         };
     }
@@ -185,6 +190,7 @@ async function resolveSession(context: APIContext): Promise<Principal> {
         scopes: ["read", "write"],
         projectId: null,
         apiKeyId: null,
+        idempotencyNamespace: `session:${user.id}`,
         supabase,
     };
 }

@@ -277,7 +277,7 @@ describe("resolvePrincipal — session path", () => {
 });
 
 describe("requireScope", () => {
-    const readOnly = { kind: "api_key" as const, scopes: ["read" as const], projectId: 1, apiKeyId: "k", supabase: {} as never };
+    const readOnly = { kind: "api_key" as const, scopes: ["read" as const], projectId: 1, apiKeyId: "k", idempotencyNamespace: "api-key:k", supabase: {} as never };
 
     it("lets a scope through when the key holds it", () => {
         expect(() => requireScope(readOnly, "read")).not.toThrow();
@@ -296,7 +296,7 @@ describe("requireScope", () => {
 });
 
 describe("resolveProjectId", () => {
-    const pinned = { kind: "api_key" as const, scopes: ["write" as const], projectId: 7, apiKeyId: "k", supabase: {} as never };
+    const pinned = { kind: "api_key" as const, scopes: ["write" as const], projectId: 7, apiKeyId: "k", idempotencyNamespace: "api-key:k", supabase: {} as never };
     const unpinned = { ...pinned, projectId: null };
 
     it("supplies the project a pinned key omitted", () => {
@@ -341,7 +341,7 @@ describe("resolveProjectId", () => {
 });
 
 describe("assertProjectAccess", () => {
-    const pinned = { kind: "api_key" as const, scopes: ["read" as const], projectId: 7, apiKeyId: "k", supabase: {} as never };
+    const pinned = { kind: "api_key" as const, scopes: ["read" as const], projectId: 7, apiKeyId: "k", idempotencyNamespace: "api-key:k", supabase: {} as never };
 
     it("allows a read inside the pin", () => {
         expect(() => assertProjectAccess(pinned, 7)).not.toThrow();

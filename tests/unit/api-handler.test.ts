@@ -31,7 +31,10 @@ function context(headers: Record<string, string> = {}) {
     } as never;
 }
 
-function principalWith(resolve: (op: QueryOp) => QueryResult | Promise<QueryResult>) {
+function principalWith(
+    resolve: (op: QueryOp) => QueryResult | Promise<QueryResult>,
+    idempotencyNamespace = "api-key:key-1",
+) {
     const supabase = createSupabaseStub(resolve);
     return {
         principal: {
@@ -39,6 +42,7 @@ function principalWith(resolve: (op: QueryOp) => QueryResult | Promise<QueryResu
             scopes: ["write" as const],
             projectId: 7,
             apiKeyId: "key-1",
+            idempotencyNamespace,
             supabase: supabase as never,
         },
         supabase,
@@ -102,7 +106,7 @@ describe("withIdempotency — first use of a key", () => {
 
         const [reservation] = supabase.opsFor("idempotency_keys", "insert");
         expect(reservation.payload).toMatchObject({
-            idempotency_key: "k1",
+            idempotency_key: await scopedKey("api-key:key-1", "k1"),
             api_key_id: "key-1",
             endpoint: ENDPOINT,
             response_status: IN_FLIGHT,
@@ -123,7 +127,7 @@ describe("withIdempotency — first use of a key", () => {
         const [update] = supabase.opsFor("idempotency_keys", "update");
         expect(update.payload).toEqual({ response_status: 201, response_body: { id: 42 } });
         expect(update.filters).toEqual([
-            ["idempotency_key", "k1"],
+            ["idempotency_key", await scopedKey("api-key:key-1", "k1")],
             ["endpoint", ENDPOINT],
         ]);
         // The caller still gets a readable body: storing it must not consume the
@@ -224,7 +228,7 @@ describe("withIdempotency — releasing a failed attempt", () => {
 
         const [release] = supabase.opsFor("idempotency_keys", "delete");
         expect(release.filters).toEqual([
-            ["idempotency_key", "k1"],
+            ["idempotency_key", await scopedKey("api-key:key-1", "k1")],
             ["endpoint", ENDPOINT],
         ]);
     });
@@ -291,12 +295,34 @@ describe("withIdempotency — request fingerprint", () => {
         await withIdempotency(context({ "idempotency-key": "  k1  " }), principal, ENDPOINT, {}, ok);
 
         const [reservation] = supabase.opsFor("idempotency_keys", "insert");
-        expect((reservation.payload as { idempotency_key: string }).idempotency_key).toBe("k1");
+        expect((reservation.payload as { idempotency_key: string }).idempotency_key).toBe(
+            await scopedKey("api-key:key-1", "k1"),
+        );
+    });
+
+    it("isolates the same caller key between authenticated principals", async () => {
+        const first = principalWith(reservationSucceeds, "api-key:first");
+        const second = principalWith(reservationSucceeds, "api-key:second");
+
+        await withIdempotency(context({ "idempotency-key": "shared" }), first.principal, ENDPOINT, {}, ok);
+        await withIdempotency(context({ "idempotency-key": "shared" }), second.principal, ENDPOINT, {}, ok);
+
+        const firstKey = (first.supabase.opsFor("idempotency_keys", "insert")[0].payload as { idempotency_key: string }).idempotency_key;
+        const secondKey = (second.supabase.opsFor("idempotency_keys", "insert")[0].payload as { idempotency_key: string }).idempotency_key;
+        expect(firstKey).not.toBe(secondKey);
+    });
+
+    it("rejects oversized keys before reserving storage", async () => {
+        const { principal, supabase } = principalWith(reservationSucceeds);
+        await expect(
+            withIdempotency(context({ "idempotency-key": "x".repeat(256) }), principal, ENDPOINT, {}, ok),
+        ).rejects.toMatchObject({ code: "validation_error" });
+        expect(supabase.ops).toHaveLength(0);
     });
 });
 
 describe("apiHandler", () => {
-    const principal = { kind: "api_key", scopes: ["read"], projectId: 7, apiKeyId: "k", supabase: {} };
+    const principal = { kind: "api_key", scopes: ["read"], projectId: 7, apiKeyId: "k", idempotencyNamespace: "api-key:k", supabase: {} };
 
     it("resolves the caller and checks the scope before running the route", async () => {
         resolvePrincipal.mockResolvedValue(principal);
@@ -424,4 +450,12 @@ async function hashOf(endpoint: string, body: unknown): Promise<string> {
     const data = new TextEncoder().encode(`${endpoint}\n${canonicalize(body)}`);
     const digest = await crypto.subtle.digest("SHA-256", data);
     return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function scopedKey(namespace: string, key: string): Promise<string> {
+    const digest = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(`${namespace}\n${key.trim()}`),
+    );
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
