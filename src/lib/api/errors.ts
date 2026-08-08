@@ -62,11 +62,14 @@ export class ApiError extends Error {
     }
 
     toResponse(extraHeaders: Record<string, string> = {}): Response {
+        const publicMessage = this.code === "internal_error"
+            ? "Se produjo un error interno."
+            : this.message;
         return new Response(
             JSON.stringify({
                 error: {
                     code: this.code,
-                    message: this.message,
+                    message: publicMessage,
                     ...(this.details ? { details: this.details } : {}),
                     ...(this.hint ? { hint: this.hint } : {}),
                 },

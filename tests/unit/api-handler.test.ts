@@ -343,7 +343,12 @@ describe("apiHandler", () => {
 
         expect(response.status).toBe(500);
         expect(response.headers.get("Content-Type")).toBe("application/json");
-        await expect(response.json()).resolves.toMatchObject({ error: { code: "internal_error" } });
+        await expect(response.json()).resolves.toEqual({
+            error: {
+                code: "internal_error",
+                message: "Se produjo un error interno.",
+            },
+        });
     });
 });
 

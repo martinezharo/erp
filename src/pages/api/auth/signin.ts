@@ -24,11 +24,18 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     }
 
     const { access_token, refresh_token } = data.session;
-    cookies.set("sb-access-token", access_token, {
+    const secure = new URL(request.url).protocol === "https:";
+    const cookieOptions = {
         path: "/",
+        httpOnly: true,
+        sameSite: "lax" as const,
+        secure,
+    };
+    cookies.set("sb-access-token", access_token, {
+        ...cookieOptions,
     });
     cookies.set("sb-refresh-token", refresh_token, {
-        path: "/",
+        ...cookieOptions,
     });
 
     return redirect("/");

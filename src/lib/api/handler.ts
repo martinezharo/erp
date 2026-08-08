@@ -29,6 +29,9 @@ export async function apiHandler(
         return await fn(principal);
     } catch (error) {
         if (error instanceof ApiError) {
+            if (error.code === "internal_error") {
+                console.error("[api/v1] internal error:", error);
+            }
             return error.toResponse();
         }
 
@@ -38,7 +41,7 @@ export async function apiHandler(
         console.error("[api/v1] unhandled error:", error);
         return new ApiError(
             "internal_error",
-            error instanceof Error ? error.message : "Error interno.",
+            "Se produjo un error interno.",
         ).toResponse();
     }
 }
